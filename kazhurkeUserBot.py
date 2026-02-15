@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════╗
-║           kazhurkeUserBot v2.2                          ║
+║           kazhurkeUserBot v2.3.0                        ║
 ║     Однофайловый Telegram Userbot с модулями            ║
 ║         и inline-панелью управления                     ║
+║     + автоустановка зависимостей модулей                 ║
 ╚══════════════════════════════════════════════════════════╝
 
 Зависимости: pip install telethon cryptg aiohttp
@@ -21,6 +22,7 @@ import traceback
 import platform
 import io
 import re
+import subprocess
 from pathlib import Path
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
@@ -42,7 +44,6 @@ from telethon.errors import (
 
 try:
     import aiohttp
-
     HAS_AIOHTTP = True
 except ImportError:
     HAS_AIOHTTP = False
@@ -50,16 +51,17 @@ except ImportError:
 # ──────────────────────── Брендинг ───────────────────────────
 
 BRAND_NAME = "kazhurkeUserBot"
-BRAND_VERSION = "2.2"
+BRAND_VERSION = "2.3.0"
 BRAND_EMOJI = "🦊"
 BRAND_SHORT = "KUB"
 
 BANNER = f"""
 \033[38;5;208m╔══════════════════════════════════════════════════╗
 ║                                                  ║
-║   {BRAND_EMOJI}  \033[1m{BRAND_NAME}\033[0m\033[38;5;208m v{BRAND_VERSION}                  ║
+║   {BRAND_EMOJI}  \033[1m{BRAND_NAME}\033[0m\033[38;5;208m v{BRAND_VERSION}                ║
 ║                                                  ║
 ║   Telegram Userbot с модулями и inline-панелью   ║
+║   + автоустановка зависимостей                   ║
 ║                                                  ║
 ╚══════════════════════════════════════════════════╝\033[0m
 """
@@ -169,6 +171,221 @@ def get_raw_github_url(url: str) -> str:
     return url
 
 
+# ──────────────── Управление зависимостями ───────────────────
+
+PIP_TO_IMPORT = {
+    "pillow": "PIL",
+    "python-dateutil": "dateutil",
+    "beautifulsoup4": "bs4",
+    "scikit-learn": "sklearn",
+    "opencv-python": "cv2",
+    "opencv-python-headless": "cv2",
+    "python-telegram-bot": "telegram",
+    "pyyaml": "yaml",
+    "pycryptodome": "Crypto",
+    "python-dotenv": "dotenv",
+    "google-api-python-client": "googleapiclient",
+    "python-magic": "magic",
+    "attrs": "attr",
+    "moviepy": "moviepy",
+    "gtts": "gtts",
+    "pydub": "pydub",
+    "speedtest-cli": "speedtest",
+    "wikipedia": "wikipedia",
+    "translate": "translate",
+    "qrcode": "qrcode",
+    "cryptg": "cryptg",
+}
+
+
+def parse_module_requirements(content: str) -> List[str]:
+    """
+    Парсит зависимости из исходного кода модуля.
+
+    Форматы:
+      # requires: aiohttp, Pillow, pydub
+      # require: aiohttp
+      # deps: aiohttp, Pillow
+      # dependencies: aiohttp
+      __requires__ = ["aiohttp", "Pillow>=9.0"]
+      __dependencies__ = ["aiohttp"]
+    """
+    requires: List[str] = []
+    seen: set = set()
+
+    for line in content.split("\n"):
+        stripped = line.strip()
+        for prefix_kw in ("# requires:", "# require:", "# deps:", "# dependencies:"):
+            if stripped.lower().startswith(prefix_kw):
+                pkgs_str = stripped[len(prefix_kw):].strip()
+                for pkg in pkgs_str.split(","):
+                    pkg = pkg.strip()
+                    if pkg and pkg.lower() not in seen:
+                        requires.append(pkg)
+                        seen.add(pkg.lower())
+
+    for var_name in ("__requires__", "__dependencies__", "__deps__"):
+        pattern = rf'{var_name}\s*=\s*\[([^\]]*)\]'
+        match = re.search(pattern, content)
+        if match:
+            items_str = match.group(1)
+            for item in re.findall(r'["\']([^"\']+)["\']', items_str):
+                item = item.strip()
+                if item and item.lower() not in seen:
+                    requires.append(item)
+                    seen.add(item.lower())
+
+    return requires
+
+
+def _get_import_name(pip_name: str) -> str:
+    """Получить имя для import из pip-имени пакета."""
+    base = re.split(r'[><=!~]', pip_name)[0].strip()
+    mapped = PIP_TO_IMPORT.get(base.lower())
+    if mapped:
+        return mapped
+    return base.replace("-", "_")
+
+
+def is_package_installed(package: str) -> bool:
+    """Проверяет, установлен ли пакет."""
+    base = re.split(r'[><=!~]', package)[0].strip()
+    import_name = _get_import_name(package)
+
+    try:
+        importlib.import_module(import_name)
+        return True
+    except ImportError:
+        pass
+
+    try:
+        from importlib.metadata import distribution
+        distribution(base)
+        return True
+    except Exception:
+        pass
+
+    try:
+        importlib.import_module(base.replace("-", "_").lower())
+        return True
+    except ImportError:
+        pass
+
+    return False
+
+
+def install_pip_package(package: str, timeout: int = 120) -> Tuple[bool, str]:
+    """Устанавливает пакет через pip синхронно."""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", package, "--quiet"],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+        if result.returncode == 0:
+            importlib.invalidate_caches()
+            return True, package
+        else:
+            err = result.stderr.strip().split("\n")[-1] if result.stderr.strip() else "unknown error"
+            return False, f"{package}: {err[:200]}"
+    except subprocess.TimeoutExpired:
+        return False, f"{package}: таймаут ({timeout}с)"
+    except FileNotFoundError:
+        return False, f"{package}: pip не найден"
+    except Exception as e:
+        return False, f"{package}: {e}"
+
+
+def uninstall_pip_package(package: str) -> Tuple[bool, str]:
+    """Удаляет пакет через pip."""
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "uninstall", package, "-y", "--quiet"],
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            return True, package
+        else:
+            err = result.stderr.strip().split("\n")[-1] if result.stderr.strip() else "unknown"
+            return False, f"{package}: {err[:200]}"
+    except Exception as e:
+        return False, f"{package}: {e}"
+
+
+def check_and_install_requirements(content: str) -> Dict[str, Any]:
+    """
+    Парсит зависимости из content, проверяет и устанавливает отсутствующие.
+    """
+    reqs = parse_module_requirements(content)
+    result = {"all": reqs, "already": [], "installed": [], "failed": []}
+
+    for pkg in reqs:
+        if is_package_installed(pkg):
+            result["already"].append(pkg)
+            log.debug(f"📦 {pkg} — уже установлен")
+        else:
+            log.info(f"📥 Устанавливаю зависимость: {pkg} ...")
+            ok, msg = install_pip_package(pkg)
+            if ok:
+                result["installed"].append(pkg)
+                log.info(f"✅ {pkg} установлен")
+            else:
+                result["failed"].append(msg)
+                log.error(f"❌ Не удалось установить {pkg}: {msg}")
+
+    return result
+
+
+async def async_install_pip_package(package: str, timeout: int = 120) -> Tuple[bool, str]:
+    """Асинхронная установка пакета через pip."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "pip", "install", package, "--quiet",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
+        except asyncio.TimeoutError:
+            proc.kill()
+            return False, f"{package}: таймаут ({timeout}с)"
+
+        if proc.returncode == 0:
+            importlib.invalidate_caches()
+            return True, package
+        else:
+            err = stderr.decode().strip().split("\n")[-1] if stderr else "unknown"
+            return False, f"{package}: {err[:200]}"
+    except FileNotFoundError:
+        return False, f"{package}: pip не найден"
+    except Exception as e:
+        return False, f"{package}: {e}"
+
+
+async def async_check_and_install_requirements(content: str) -> Dict[str, Any]:
+    """Асинхронная версия check_and_install_requirements."""
+    reqs = parse_module_requirements(content)
+    result = {"all": reqs, "already": [], "installed": [], "failed": []}
+
+    for pkg in reqs:
+        if is_package_installed(pkg):
+            result["already"].append(pkg)
+        else:
+            log.info(f"📥 Устанавливаю зависимость: {pkg} ...")
+            ok, msg = await async_install_pip_package(pkg)
+            if ok:
+                result["installed"].append(pkg)
+                log.info(f"✅ {pkg} установлен")
+            else:
+                result["failed"].append(msg)
+                log.error(f"❌ {msg}")
+
+    return result
+
+
 # ──────────────────────── Конфиг ─────────────────────────────
 
 
@@ -250,27 +467,29 @@ class Config:
 
 # ──────────────────────── module_config ───────────────────────
 
+
 def module_config(bot, mod_name: str, key: str, default=None):
     """
     Получить значение настройки модуля.
-    Использование в модулях:
-        from __main__ import module_config
-        val = module_config(bot, "mymod", "color", "red")
+    Всегда читает из config.data напрямую.
     """
-    custom = bot.config.get("custom_settings", {})
+    custom = bot.config.data.get("custom_settings", {})
     full_key = f"{mod_name}.{key}"
     val = custom.get(full_key)
+
     if val is None:
-        # Ищем default в schema
         mod = bot.module_manager.modules.get(mod_name)
         if mod:
             for s in mod.settings_schema:
                 if s["key"] == key:
-                    return s.get("default", default)
-        return default
-    # Приведение типов
+                    val = s.get("default", default)
+                    break
+        if val is None:
+            return default
+
+    # Приведение типов по schema
     mod = bot.module_manager.modules.get(mod_name)
-    if mod:
+    if mod and val is not None:
         for s in mod.settings_schema:
             if s["key"] == key:
                 stype = s.get("type", "str")
@@ -280,21 +499,26 @@ def module_config(bot, mod_name: str, key: str, default=None):
                     elif stype == "float":
                         return float(val)
                     elif stype == "bool":
-                        return val.lower() in ("true", "1", "yes", "да", "on")
+                        if isinstance(val, bool):
+                            return val
+                        return str(val).lower() in ("true", "1", "yes", "да", "on")
                     elif stype == "list":
                         if isinstance(val, list):
                             return val
-                        return [x.strip() for x in val.split(",") if x.strip()]
-                except (ValueError, AttributeError):
+                        return [x.strip() for x in str(val).split(",") if x.strip()]
+                except (ValueError, AttributeError, TypeError):
                     return default
+                break
+
     return val
 
 
 def module_config_set(bot, mod_name: str, key: str, value):
-    """Установить настройку модуля."""
-    custom = bot.config.get("custom_settings", {})
+    """Установить настройку модуля. Пишет напрямую в config.data и сохраняет."""
+    custom = dict(bot.config.data.get("custom_settings", {}))
     custom[f"{mod_name}.{key}"] = value
-    bot.config.set("custom_settings", custom)
+    bot.config.data["custom_settings"] = custom
+    bot.config.save()
 
 
 # ──────────────────────── Модульная система ───────────────────
@@ -322,6 +546,7 @@ class Module:
     on_unload: Optional[Callable] = None
     settings: Dict[str, Any] = field(default_factory=dict)
     settings_schema: List[Dict] = field(default_factory=list)
+    requirements: List[str] = field(default_factory=list)
 
 
 class ModuleManager:
@@ -391,6 +616,29 @@ class ModuleManager:
             log.info(f"📂 {loaded} пользовательских модулей загружено")
 
     def _load_file(self, file: Path):
+        """Загружает модуль из файла, предварительно проверяя и устанавливая зависимости."""
+        # ──── Читаем содержимое для парсинга зависимостей ────
+        content = file.read_text(encoding="utf-8", errors="replace")
+
+        # ──── Проверяем и устанавливаем зависимости ────
+        deps_result = check_and_install_requirements(content)
+        if deps_result["all"]:
+            installed_count = len(deps_result["installed"])
+            failed_count = len(deps_result["failed"])
+
+            if installed_count:
+                log.info(
+                    f"📦 {file.stem}: установлено {installed_count}/{len(deps_result['all'])} зависимостей "
+                    f"({', '.join(deps_result['installed'])})"
+                )
+            if failed_count:
+                log.warning(
+                    f"⚠️ {file.stem}: не удалось установить {failed_count} зависимость(ей): "
+                    f"{', '.join(deps_result['failed'])}"
+                )
+                log.warning(f"⚠️ {file.stem}: модуль будет загружен, но может работать некорректно")
+
+        # ──── Загружаем модуль ────
         spec = importlib.util.spec_from_file_location(file.stem, file)
         py = importlib.util.module_from_spec(spec)
         py.bot = self.bot
@@ -404,15 +652,25 @@ class ModuleManager:
             py.setup(self.bot)
 
     def install_from_file(self, filename: str, content: bytes) -> Tuple[bool, str]:
+        """Устанавливает модуль из файла. Автоматически ставит зависимости."""
         if not filename.endswith(".py"):
             return False, "Файл должен быть .py"
         mod_name = filename[:-3]
         if mod_name in self._builtin_names:
             return False, f"`{mod_name}` зарезервировано"
         try:
-            content.decode("utf-8")
+            text_content = content.decode("utf-8")
         except UnicodeDecodeError:
             return False, "Невалидный UTF-8"
+
+        # ──── Проверяем зависимости ДО записи файла ────
+        deps_result = check_and_install_requirements(text_content)
+        deps_info = ""
+        if deps_result["installed"]:
+            deps_info += f"\n📥 Установлены: {', '.join(deps_result['installed'])}"
+        if deps_result["failed"]:
+            deps_info += f"\n⚠️ Ошибки: {', '.join(deps_result['failed'])}"
+
         path = Path(MODULES_DIR)
         path.mkdir(parents=True, exist_ok=True)
         fp = path / filename
@@ -423,15 +681,21 @@ class ModuleManager:
             self._load_file(fp)
         except Exception as e:
             fp.unlink(missing_ok=True)
-            return False, f"Ошибка: {e}"
+            return False, f"Ошибка: {e}{deps_info}"
         installed = self.bot.config.get("installed_modules", {})
         installed[mod_name] = {
             "filename": filename,
             "installed_at": datetime.now().isoformat(),
             "source": "file",
+            "requirements": deps_result["all"],
         }
         self.bot.config.set("installed_modules", installed)
-        return True, mod_name
+
+        # Сохраняем зависимости в объекте модуля
+        if mod_name in self.modules:
+            self.modules[mod_name].requirements = deps_result["all"]
+
+        return True, mod_name + deps_info
 
     async def install_from_url(self, url: str) -> Tuple[bool, str]:
         if not HAS_AIOHTTP:
@@ -450,9 +714,18 @@ class ModuleManager:
                         return False, ">5MB"
                     txt = content.decode("utf-8", errors="replace")
                     if txt.strip().startswith(("<!DOCTYPE", "<html")):
-                        return False, "HTML вместо Python. Используйте raw-ссылку"
+                        return False, "HTML вместо Python"
         except Exception as e:
             return False, str(e)
+
+        # ──── Асинхронная установка зависимостей перед загрузкой ────
+        deps_result = await async_check_and_install_requirements(txt)
+        deps_info = ""
+        if deps_result["installed"]:
+            deps_info += f"\n📥 Установлены: {', '.join(deps_result['installed'])}"
+        if deps_result["failed"]:
+            deps_info += f"\n⚠️ Ошибки: {', '.join(deps_result['failed'])}"
+
         ok, res = self.install_from_file(fn, content)
         if ok:
             inst = self.bot.config.get("installed_modules", {})
@@ -460,6 +733,7 @@ class ModuleManager:
             if mn in inst:
                 inst[mn]["source"] = "url"
                 inst[mn]["url"] = url
+                inst[mn]["requirements"] = deps_result["all"]
                 self.bot.config.set("installed_modules", inst)
         return ok, res
 
@@ -543,8 +817,6 @@ class InlinePanel:
     async def _is_owner(self, uid: int) -> bool:
         return uid == self.bot.config.owner_id
 
-    # ─── inline query ───
-
     async def _on_inline_query(self, event):
         if not await self._is_owner(event.sender_id):
             await event.answer([event.builder.article(title="⛔", text="Нет доступа.")])
@@ -620,15 +892,17 @@ class InlinePanel:
         mod = self.bot.module_manager.modules.get(mod_name)
         btns = []
         if mod:
-            custom = self.bot.config.get("custom_settings", {})
+            custom = self.bot.config.data.get("custom_settings", {})
             for s in mod.settings_schema:
-                key = f"{mod_name}.{s['key']}"
-                val = custom.get(key, s.get("default", "—"))
+                fk = f"{mod_name}.{s['key']}"
+                val = custom.get(fk, s.get("default", "—"))
                 disp = str(val)[:25]
                 stype = s.get("type", "str")
-                # Для bool делаем toggle
                 if stype == "bool":
-                    bval = str(val).lower() in ("true", "1", "yes", "да", "on")
+                    if isinstance(val, bool):
+                        bval = val
+                    else:
+                        bval = str(val).lower() in ("true", "1", "yes", "да", "on")
                     icon = "✅" if bval else "❌"
                     btns.append([Button.inline(
                         f"{icon} {s['label']}",
@@ -642,10 +916,8 @@ class InlinePanel:
         btns.append([Button.inline("🔙 Назад", f"m:{mod_name}".encode())])
         return btns
 
-    # ─── kinfo настройки ───
-
     def _kinfo_buttons(self):
-        ki = self.bot.config.get("kinfo", {})
+        ki = self.bot.config.data.get("kinfo", {})
         emoji = ki.get("emoji", BRAND_EMOJI)
         photo = "✅" if ki.get("photo") else "❌"
         btns = [
@@ -653,18 +925,13 @@ class InlinePanel:
             [Button.inline(f"🖼 Фото: {photo}", b"ki:photo")],
             [Button.inline("📝 Шаблон текста", b"ki:template")],
             [Button.inline("➕ Добавить строку", b"ki:addline")],
-            [Button.inline("🗑 Очистить доп. строки", b"ki:clearlines")],
+            [Button.inline("🗑 Очистить строки", b"ki:clearlines")],
         ]
-        # toggles
         toggles = [
-            ("show_ping", "🏓 Пинг"),
-            ("show_uptime", "⏱ Аптайм"),
-            ("show_modules", "📦 Модули"),
-            ("show_commands", "🔧 Команды"),
-            ("show_prefix", "🔑 Префикс"),
-            ("show_python", "🐍 Python"),
-            ("show_telethon", "📡 Telethon"),
-            ("show_os", "💻 ОС"),
+            ("show_ping", "🏓 Пинг"), ("show_uptime", "⏱ Аптайм"),
+            ("show_modules", "📦 Модули"), ("show_commands", "🔧 Команды"),
+            ("show_prefix", "🔑 Префикс"), ("show_python", "🐍 Python"),
+            ("show_telethon", "📡 Telethon"), ("show_os", "💻 ОС"),
             ("show_owner", "👤 Владелец"),
         ]
         row = []
@@ -689,7 +956,6 @@ class InlinePanel:
             return
         data = event.data.decode()
         try:
-            # Pages
             if data == "p:main":
                 await event.edit(
                     f"{BRAND_EMOJI} **{BRAND_NAME}** v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━",
@@ -697,7 +963,7 @@ class InlinePanel:
                 )
             elif data == "p:modules":
                 mods = self.bot.module_manager.modules
-                t = f"📋 **Модули** ({len(mods)})\n━━━━━━━━━━━━━━━━━━━━━\n🔵 встроен | 🟢 польз | 🔴 выкл\n\n"
+                t = f"📋 **Модули** ({len(mods)})\n━━━━━━━━━━━━━━━━━━━━━\n🔵 встр | 🟢 польз | 🔴 выкл\n\n"
                 for n, m in mods.items():
                     d = n in self.bot.config.disabled_modules
                     b = self.bot.module_manager.is_builtin(n)
@@ -714,7 +980,10 @@ class InlinePanel:
                     for n, m in um.items():
                         info = inst.get(n, {})
                         src = {"file": "📎", "url": "🌐"}.get(info.get("source", ""), "❓")
+                        reqs = info.get("requirements", [])
                         t += f"🟢 **{n}** `v{m.version}` {src}\n"
+                        if reqs:
+                            t += f"   📦 Зависимости: `{', '.join(reqs)}`\n"
                         if m.settings_schema:
                             t += f"   ⚙️ {len(m.settings_schema)} настроек\n"
                 else:
@@ -726,6 +995,7 @@ class InlinePanel:
                     f"⚙️ **Настройки**\n━━━━━━━━━━━━━━━━━━━━━",
                     buttons=self._settings_buttons(),
                 )
+
             elif data == "p:status":
                 up = format_uptime(time.time() - self.bot.start_time)
                 me = await self.bot.client.get_me()
@@ -734,7 +1004,7 @@ class InlinePanel:
                 t = (
                     f"📊 **Статус**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"👤 {me.first_name} `{me.id}`\n⏱ **{up}**\n"
-                    f"📦 {tm} (🔵{tm-um} 🟢{um})\n🔧 {len(self.bot._command_handlers)}\n"
+                    f"📦 {tm} (🔵{tm - um} 🟢{um})\n🔧 {len(self.bot._command_handlers)}\n"
                     f"🔑 `{self.bot.config.prefix}`\n"
                     f"🐍 `{platform.python_version()}`\n📡 `{telethon_version.__version__}`\n"
                     f"💻 {platform.system()} {platform.release()}\n"
@@ -755,102 +1025,87 @@ class InlinePanel:
                 self._states[event.sender_id] = {"w": "prefix"}
                 await event.edit(f"🔧 Текущий: `{self.bot.config.prefix}`\nОтправьте новый:",
                                  buttons=[[Button.inline("🔙", b"p:settings")]])
+
             elif data == "p:alive":
                 self._states[event.sender_id] = {"w": "alive"}
                 await event.edit("💬 Отправьте alive. Переменные: {uptime} {modules} {commands} {emoji} {brand}",
                                  buttons=[[Button.inline("🔙", b"p:settings")]])
 
-            # ─── kinfo panel ───
+            # ─── kinfo ───
             elif data == "p:kinfo":
-                ki = self.bot.config.get("kinfo", {})
+                ki = self.bot.config.data.get("kinfo", {})
                 cl = ki.get("custom_lines", [])
-                t = (
-                    f"🎨 **Настройка kinfo**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"Кастомизируйте информационную карточку.\n"
-                    f"Доп. строк: {len(cl)}\n"
+                await event.edit(
+                    f"🎨 **Настройка kinfo**\n━━━━━━━━━━━━━━━━━━━━━\nДоп. строк: {len(cl)}",
+                    buttons=self._kinfo_buttons(),
                 )
-                await event.edit(t, buttons=self._kinfo_buttons())
-
             elif data == "ki:emoji":
                 self._states[event.sender_id] = {"w": "kinfo_emoji"}
-                await event.edit("😀 Отправьте новый эмодзи для kinfo:",
-                                 buttons=[[Button.inline("🔙", b"p:kinfo")]])
+                await event.edit("😀 Отправьте эмодзи:", buttons=[[Button.inline("🔙", b"p:kinfo")]])
             elif data == "ki:photo":
                 self._states[event.sender_id] = {"w": "kinfo_photo"}
-                ki = self.bot.config.get("kinfo", {})
+                ki = self.bot.config.data.get("kinfo", {})
                 cur = ki.get("photo", "")
                 btns = []
                 if cur:
                     btns.append([Button.inline("🗑 Удалить фото", b"ki:rmphoto")])
                 btns.append([Button.inline("🔙", b"p:kinfo")])
                 await event.edit(
-                    f"🖼 **Фото kinfo**\n\n"
-                    f"{'Текущее: установлено ✅' if cur else 'Не установлено ❌'}\n\n"
-                    f"Отправьте фото боту или ссылку на изображение:",
+                    f"🖼 **Фото**\n{'Установлено ✅' if cur else 'Нет ❌'}\nОтправьте фото или URL:",
                     buttons=btns,
                 )
             elif data == "ki:rmphoto":
-                ki = self.bot.config.get("kinfo", {})
+                ki = dict(self.bot.config.data.get("kinfo", {}))
                 ki["photo"] = ""
-                self.bot.config.set("kinfo", ki)
+                self.bot.config.data["kinfo"] = ki
+                self.bot.config.save()
                 await event.answer("✅ Фото удалено", alert=True)
                 await event.edit(buttons=self._kinfo_buttons())
-
             elif data == "ki:template":
                 self._states[event.sender_id] = {"w": "kinfo_template"}
                 await event.edit(
-                    "📝 **Шаблон kinfo**\n\n"
-                    "Переменные:\n"
-                    "`{emoji}` `{brand}` `{version}` `{owner}`\n"
-                    "`{ping}` `{uptime}` `{modules}` `{builtin}`\n"
-                    "`{user_mods}` `{commands}` `{prefix}`\n"
-                    "`{python}` `{telethon}` `{os}` `{custom_lines}`\n\n"
-                    "Отправьте новый шаблон:",
+                    "📝 **Шаблон**\nПеременные: {emoji} {brand} {version} {owner} {ping} {uptime}\n"
+                    "{modules} {builtin} {user_mods} {commands} {prefix} {python} {telethon} {os} {custom_lines}",
                     buttons=[
                         [Button.inline("🔄 Сбросить", b"ki:resettemplate")],
                         [Button.inline("🔙", b"p:kinfo")],
                     ],
                 )
             elif data == "ki:resettemplate":
-                ki = self.bot.config.get("kinfo", {})
+                ki = dict(self.bot.config.data.get("kinfo", {}))
                 ki["template"] = DEFAULT_KINFO_TEMPLATE
-                self.bot.config.set("kinfo", ki)
-                await event.answer("✅ Шаблон сброшен", alert=True)
+                self.bot.config.data["kinfo"] = ki
+                self.bot.config.save()
+                await event.answer("✅ Сброшен", alert=True)
                 await event.edit(buttons=self._kinfo_buttons())
-
             elif data == "ki:addline":
                 self._states[event.sender_id] = {"w": "kinfo_addline"}
-                await event.edit(
-                    "➕ **Добавить строку**\n\nОтправьте текст.\nМожно использовать эмодзи.",
-                    buttons=[[Button.inline("🔙", b"p:kinfo")]],
-                )
+                await event.edit("➕ Отправьте текст строки:",
+                                 buttons=[[Button.inline("🔙", b"p:kinfo")]])
             elif data == "ki:clearlines":
-                ki = self.bot.config.get("kinfo", {})
+                ki = dict(self.bot.config.data.get("kinfo", {}))
                 ki["custom_lines"] = []
-                self.bot.config.set("kinfo", ki)
-                await event.answer("✅ Строки очищены", alert=True)
+                self.bot.config.data["kinfo"] = ki
+                self.bot.config.save()
+                await event.answer("✅ Очищено", alert=True)
                 await event.edit(buttons=self._kinfo_buttons())
-
             elif data == "ki:preview":
                 text = await self.bot.build_kinfo_text()
-                ki = self.bot.config.get("kinfo", {})
+                ki = self.bot.config.data.get("kinfo", {})
                 if ki.get("photo"):
-                    await event.answer("Превью отправлено в этот чат", alert=True)
+                    await event.answer("Превью отправлено", alert=True)
                     try:
-                        await self.inline_bot.send_file(
-                            event.sender_id, ki["photo"], caption=text, parse_mode="md"
-                        )
+                        await self.inline_bot.send_file(event.sender_id, ki["photo"], caption=text, parse_mode="md")
                     except Exception:
                         await self.inline_bot.send_message(event.sender_id, text, parse_mode="md")
                 else:
                     await event.edit(text, buttons=[[Button.inline("🔙", b"p:kinfo")]])
-
-            # kinfo toggles
             elif data.startswith("kit:"):
                 key = data[4:]
-                ki = self.bot.config.get("kinfo", {})
+                ki = dict(self.bot.config.data.get("kinfo", {}))
                 ki[key] = not ki.get(key, True)
-                self.bot.config.set("kinfo", ki)
+                self.bot.config.data["kinfo"] = ki
+                self.bot.config.save()
                 await event.edit(buttons=self._kinfo_buttons())
 
             # ─── Module callbacks ───
@@ -864,21 +1119,25 @@ class InlinePanel:
                 ct = ""
                 for cn, cmd in mod.commands.items():
                     ct += f"  `{self.bot.config.prefix}{cn}` — {cmd.description}\n"
-                # Показываем настройки если есть
-                settings_preview = ""
+                sp = ""
                 if mod.settings_schema:
-                    settings_preview = f"\n⚙️ **Настройки:** {len(mod.settings_schema)} параметров\n"
-                    custom = self.bot.config.get("custom_settings", {})
+                    sp = f"\n⚙️ **Настройки:** {len(mod.settings_schema)}\n"
+                    custom = self.bot.config.data.get("custom_settings", {})
                     for s in mod.settings_schema[:5]:
                         k = f"{name}.{s['key']}"
                         v = custom.get(k, s.get("default", "—"))
-                        settings_preview += f"  `{s['key']}` = `{v}`\n"
-
+                        sp += f"  `{s['key']}` = `{v}`\n"
+                # Показываем зависимости
+                deps_text = ""
+                inst = self.bot.config.get("installed_modules", {})
+                info = inst.get(name, {})
+                reqs = info.get("requirements", []) or mod.requirements
+                if reqs:
+                    deps_text = f"\n📦 **Зависимости:** `{', '.join(reqs)}`\n"
                 t = (
                     f"📦 **{mod.name}** `v{mod.version}`\n━━━━━━━━━━━━━━━━━━━━━\n"
                     f"{'🔵 Встроенный' if bi else '🟢 Пользовательский'}\n"
-                    f"👤 {mod.author}\n📝 {mod.description}\n"
-                    f"{settings_preview}\n"
+                    f"👤 {mod.author}\n📝 {mod.description}\n{deps_text}{sp}\n"
                     f"**Команды:**\n{ct or '_Нет_'}"
                 )
                 await event.edit(t, buttons=self._module_buttons(name))
@@ -906,7 +1165,7 @@ class InlinePanel:
                 t = f"⚙️ **Настройки: {mn}**\n━━━━━━━━━━━━━━━━━━━━━\n"
                 if mod and mod.settings_schema:
                     t += f"\n{mod.description}\n\n"
-                    custom = self.bot.config.get("custom_settings", {})
+                    custom = self.bot.config.data.get("custom_settings", {})
                     for s in mod.settings_schema:
                         k = f"{mn}.{s['key']}"
                         v = custom.get(k, s.get("default", "—"))
@@ -923,25 +1182,38 @@ class InlinePanel:
                 schema = next((s for s in (mod.settings_schema if mod else []) if s["key"] == key), {})
                 desc = schema.get("description", "")
                 stype = schema.get("type", "str")
+                cur = self.bot.config.data.get("custom_settings", {}).get(f"{mn}.{key}", schema.get("default", "—"))
                 await event.edit(
                     f"✏️ **{schema.get('label', key)}**\n"
                     f"Тип: `{stype}`\n"
+                    f"Текущее: `{cur}`\n"
                     f"{f'ℹ️ {desc}' if desc else ''}\n\n"
-                    f"Отправьте значение:",
+                    f"Отправьте новое значение:",
                     buttons=[[Button.inline("🔙", f"ms:{mn}".encode())]],
                 )
 
             elif data.startswith("stoggle:"):
                 parts = data[8:].split(":", 1)
                 mn, key = parts
-                custom = self.bot.config.get("custom_settings", {})
-                fk = f"{mn}.{key}"
-                cur = str(custom.get(fk, "true")).lower() in ("true", "1", "yes", "да", "on")
-                custom[fk] = str(not cur).lower()
-                self.bot.config.set("custom_settings", custom)
+                full_key = f"{mn}.{key}"
+                custom = dict(self.bot.config.data.get("custom_settings", {}))
+                cur_val = custom.get(full_key)
+                if cur_val is None:
+                    mod_obj = self.bot.module_manager.modules.get(mn)
+                    if mod_obj:
+                        for s in mod_obj.settings_schema:
+                            if s["key"] == key:
+                                cur_val = s.get("default", "true")
+                                break
+                if isinstance(cur_val, bool):
+                    cur_bool = cur_val
+                else:
+                    cur_bool = str(cur_val).lower() in ("true", "1", "yes", "да", "on")
+                custom[full_key] = "false" if cur_bool else "true"
+                self.bot.config.data["custom_settings"] = custom
+                self.bot.config.save()
                 await event.edit(buttons=self._mod_settings_buttons(mn))
 
-            # Settings
             elif data == "s:prefix":
                 self._states[event.sender_id] = {"w": "prefix"}
                 await event.edit("🔧 Новый префикс:", buttons=[[Button.inline("🔙", b"p:settings")]])
@@ -949,7 +1221,6 @@ class InlinePanel:
                 self._states[event.sender_id] = {"w": "alive"}
                 await event.edit("💬 Новый alive:", buttons=[[Button.inline("🔙", b"p:settings")]])
 
-            # Actions
             elif data == "act:reload":
                 bi = set(self.bot.module_manager._builtin_names)
                 for n in [x for x in self.bot.module_manager.modules if x not in bi]:
@@ -972,6 +1243,7 @@ class InlinePanel:
     async def _on_message(self, event):
         if not await self._is_owner(event.sender_id):
             return
+
         st = self._states.get(event.sender_id)
         if not st:
             if self.inline_bot:
@@ -981,6 +1253,7 @@ class InlinePanel:
 
         w = st.get("w")
         txt = event.raw_text.strip()
+        handled = True
 
         if w == "prefix":
             if len(txt) > 3:
@@ -994,50 +1267,70 @@ class InlinePanel:
             await event.reply("✅ Alive обновлён")
 
         elif w == "modsetting":
-            mn, key = st["mn"], st["key"]
-            custom = self.bot.config.get("custom_settings", {})
-            custom[f"{mn}.{key}"] = txt
-            self.bot.config.set("custom_settings", custom)
-            await event.reply(f"✅ `{key}` = `{txt}`")
+            mn = st.get("mn", "")
+            key = st.get("key", "")
+            if mn and key:
+                full_key = f"{mn}.{key}"
+                custom = dict(self.bot.config.data.get("custom_settings", {}))
+                custom[full_key] = txt
+                self.bot.config.data["custom_settings"] = custom
+                self.bot.config.save()
+
+                # Верификация
+                saved = self.bot.config.data.get("custom_settings", {}).get(full_key)
+                if saved == txt:
+                    await event.reply(f"✅ `{mn}.{key}` = `{txt}`")
+                else:
+                    await event.reply(f"⚠️ Ошибка сохранения! Ожидалось `{txt}`, получено `{saved}`")
+            else:
+                await event.reply("❌ Не указан модуль или ключ")
+                handled = False
 
         elif w == "kinfo_emoji":
-            ki = self.bot.config.get("kinfo", {})
+            ki = dict(self.bot.config.data.get("kinfo", {}))
             ki["emoji"] = txt[:5]
-            self.bot.config.set("kinfo", ki)
+            self.bot.config.data["kinfo"] = ki
+            self.bot.config.save()
             await event.reply(f"✅ Эмодзи: {txt[:5]}")
 
         elif w == "kinfo_photo":
-            ki = self.bot.config.get("kinfo", {})
+            ki = dict(self.bot.config.data.get("kinfo", {}))
             if event.photo:
-                # Скачиваем фото
-                photo_path = f"kub_kinfo_photo.jpg"
+                photo_path = "kub_kinfo_photo.jpg"
                 await self.inline_bot.download_media(event.photo, photo_path)
                 ki["photo"] = photo_path
-                self.bot.config.set("kinfo", ki)
+                self.bot.config.data["kinfo"] = ki
+                self.bot.config.save()
                 await event.reply("✅ Фото установлено!")
             elif txt.startswith(("http://", "https://")):
                 ki["photo"] = txt
-                self.bot.config.set("kinfo", ki)
-                await event.reply("✅ Фото (URL) установлено!")
+                self.bot.config.data["kinfo"] = ki
+                self.bot.config.save()
+                await event.reply("✅ Фото (URL)!")
             else:
                 await event.reply("❌ Отправьте фото или URL")
                 return
 
         elif w == "kinfo_template":
-            ki = self.bot.config.get("kinfo", {})
+            ki = dict(self.bot.config.data.get("kinfo", {}))
             ki["template"] = txt
-            self.bot.config.set("kinfo", ki)
+            self.bot.config.data["kinfo"] = ki
+            self.bot.config.save()
             await event.reply("✅ Шаблон обновлён")
 
         elif w == "kinfo_addline":
-            ki = self.bot.config.get("kinfo", {})
-            lines = ki.get("custom_lines", [])
+            ki = dict(self.bot.config.data.get("kinfo", {}))
+            lines = list(ki.get("custom_lines", []))
             lines.append(txt)
             ki["custom_lines"] = lines
-            self.bot.config.set("kinfo", ki)
-            await event.reply(f"✅ Строка добавлена (всего: {len(lines)})")
+            self.bot.config.data["kinfo"] = ki
+            self.bot.config.save()
+            await event.reply(f"✅ Строка добавлена ({len(lines)})")
 
-        if event.sender_id in self._states:
+        else:
+            handled = False
+
+        if handled and event.sender_id in self._states:
             del self._states[event.sender_id]
 
 
@@ -1065,53 +1358,43 @@ def load_core_module(bot: "Userbot"):
         await event.edit(t)
 
     async def cmd_kinfo(event):
-        """Кастомизируемая инфо-карточка."""
         start = time.time()
         text = await bot.build_kinfo_text(ping_start=start)
-        ki = bot.config.get("kinfo", {})
+        ki = bot.config.data.get("kinfo", {})
         photo = ki.get("photo", "")
-
         if photo:
             await event.delete()
             try:
-                await bot.client.send_file(
-                    event.chat_id, photo, caption=text, parse_mode="md"
-                )
+                await bot.client.send_file(event.chat_id, photo, caption=text, parse_mode="md")
             except Exception:
                 await bot.client.send_message(event.chat_id, text)
         else:
             await event.edit(text)
 
-    async def cmd_kinfo_set(event):
-        """Быстрые настройки kinfo из чата."""
+    async def cmd_kset(event):
         args = event.raw_text.split(maxsplit=2)
         if len(args) < 2:
-            ki = bot.config.get("kinfo", {})
+            ki = bot.config.data.get("kinfo", {})
             await event.edit(
-                f"🎨 **Настройки kinfo**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"**Команды:**\n"
-                f"  `{p}kset emoji <эмодзи>` — сменить эмодзи\n"
-                f"  `{p}kset photo` — ответ на фото для установки\n"
-                f"  `{p}kset photo <url>` — фото по ссылке\n"
-                f"  `{p}kset photo remove` — удалить фото\n"
-                f"  `{p}kset addline <текст>` — доп. строка\n"
-                f"  `{p}kset clearlines` — очистить строки\n"
-                f"  `{p}kset reset` — сбросить всё\n\n"
-                f"Или через inline-панель: `{p}settings`"
+                f"🎨 **kinfo настройки**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"`{p}kset emoji <эмодзи>`\n"
+                f"`{p}kset photo` (ответ на фото)\n"
+                f"`{p}kset photo <url/remove>`\n"
+                f"`{p}kset addline <текст>`\n"
+                f"`{p}kset clearlines`\n"
+                f"`{p}kset reset`"
             )
             return
-
         sub = args[1].lower()
-        ki = bot.config.get("kinfo", {})
-
+        ki = dict(bot.config.data.get("kinfo", {}))
         if sub == "emoji":
             if len(args) < 3:
                 await event.edit(f"❌ `{p}kset emoji <эмодзи>`")
                 return
             ki["emoji"] = args[2][:5]
-            bot.config.set("kinfo", ki)
-            await event.edit(f"✅ Эмодзи: {args[2][:5]}")
-
+            bot.config.data["kinfo"] = ki
+            bot.config.save()
+            await event.edit(f"✅ {args[2][:5]}")
         elif sub == "photo":
             if event.is_reply:
                 reply = await event.get_reply_message()
@@ -1119,46 +1402,47 @@ def load_core_module(bot: "Userbot"):
                     path = "kub_kinfo_photo.jpg"
                     await bot.client.download_media(reply.photo, path)
                     ki["photo"] = path
-                    bot.config.set("kinfo", ki)
-                    await event.edit("✅ Фото установлено!")
+                    bot.config.data["kinfo"] = ki
+                    bot.config.save()
+                    await event.edit("✅ Фото!")
                     return
-
             if len(args) >= 3:
                 val = args[2].strip()
                 if val.lower() == "remove":
                     ki["photo"] = ""
-                    bot.config.set("kinfo", ki)
-                    await event.edit("✅ Фото удалено")
+                    bot.config.data["kinfo"] = ki
+                    bot.config.save()
+                    await event.edit("✅ Удалено")
                 elif val.startswith(("http://", "https://")):
                     ki["photo"] = val
-                    bot.config.set("kinfo", ki)
-                    await event.edit("✅ Фото (URL) установлено!")
+                    bot.config.data["kinfo"] = ki
+                    bot.config.save()
+                    await event.edit("✅ Фото (URL)!")
                 else:
                     await event.edit("❌ URL или `remove`")
             else:
                 await event.edit(f"❌ Ответьте на фото или `{p}kset photo <url/remove>`")
-
         elif sub == "addline":
             if len(args) < 3:
                 await event.edit(f"❌ `{p}kset addline <текст>`")
                 return
-            lines = ki.get("custom_lines", [])
+            lines = list(ki.get("custom_lines", []))
             lines.append(args[2])
             ki["custom_lines"] = lines
-            bot.config.set("kinfo", ki)
-            await event.edit(f"✅ Строка добавлена ({len(lines)})")
-
+            bot.config.data["kinfo"] = ki
+            bot.config.save()
+            await event.edit(f"✅ Строка ({len(lines)})")
         elif sub == "clearlines":
             ki["custom_lines"] = []
-            bot.config.set("kinfo", ki)
-            await event.edit("✅ Строки очищены")
-
+            bot.config.data["kinfo"] = ki
+            bot.config.save()
+            await event.edit("✅ Очищено")
         elif sub == "reset":
-            bot.config.set("kinfo", Config._defaults["kinfo"].copy())
-            await event.edit("✅ kinfo сброшен к дефолту")
-
+            bot.config.data["kinfo"] = dict(Config._defaults["kinfo"])
+            bot.config.save()
+            await event.edit("✅ Сброшено")
         else:
-            await event.edit(f"❌ Неизвестная подкоманда: `{sub}`")
+            await event.edit(f"❌ `{sub}`?")
 
     async def cmd_help(event):
         args = event.raw_text.split(maxsplit=1)
@@ -1215,7 +1499,8 @@ def load_core_module(bot: "Userbot"):
             cc = len(m.commands)
             tc += cc
             sc = f" ⚙️{len(m.settings_schema)}" if m.settings_schema else ""
-            t += f"{i} **{n}** `v{m.version}` [{cc}cmd{sc}]\n"
+            deps = f" 📦{len(m.requirements)}" if m.requirements else ""
+            t += f"{i} **{n}** `v{m.version}` [{cc}cmd{sc}{deps}]\n"
         t += f"\n📊 {tc} команд, {len(um)} польз."
         await event.edit(t)
 
@@ -1259,7 +1544,7 @@ def load_core_module(bot: "Userbot"):
 
     async def cmd_settings(event):
         if not bot.inline_panel.active:
-            await event.edit(f"⚠️ `{p}settoken <token>` для inline панели")
+            await event.edit(f"⚠️ `{p}settoken <token>`")
             return
         me = await bot.inline_panel.inline_bot.get_me()
         await event.edit(f"⚙️ `@{me.username} ` в любом чате")
@@ -1294,7 +1579,7 @@ def load_core_module(bot: "Userbot"):
         await event.edit(
             f"📊 **{BRAND_NAME}** v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"👤 {me.first_name} `{me.id}`\n⏱ **{up}**\n"
-            f"📦 {tm} (🔵{tm-um} 🟢{um})\n🔧 {len(bot._command_handlers)}\n"
+            f"📦 {tm} (🔵{tm - um} 🟢{um})\n🔧 {len(bot._command_handlers)}\n"
             f"📈 {st.get('commands_used', 0)} выполнено\n"
             f"🔑 `{bot.config.prefix}` | 🐍 `{platform.python_version()}`\n"
             f"📡 `{telethon_version.__version__}` | 💻 {platform.system()}\n"
@@ -1324,9 +1609,22 @@ def load_core_module(bot: "Userbot"):
         except Exception as e:
             await event.edit(f"❌ {e}")
             return
+
+        # Предварительно показываем зависимости
+        text_content = content.decode("utf-8", errors="replace")
+        reqs = parse_module_requirements(text_content)
+        if reqs:
+            missing = [r for r in reqs if not is_package_installed(r)]
+            if missing:
+                await event.edit(
+                    f"📥 `{fn}`\n📦 Установка зависимостей: `{', '.join(missing)}`..."
+                )
+
         ok, res = bot.module_manager.install_from_file(fn, content)
         if ok:
-            m = bot.module_manager.modules.get(res)
+            # res может содержать имя модуля + инфо о зависимостях
+            mod_name = res.split("\n")[0]
+            m = bot.module_manager.modules.get(mod_name)
             cc = len(m.commands) if m else 0
             cl = ""
             if m and m.commands:
@@ -1335,8 +1633,9 @@ def load_core_module(bot: "Userbot"):
                 )
             sc = ""
             if m and m.settings_schema:
-                sc = f"\n⚙️ {len(m.settings_schema)} настроек (через `{p}settings`)"
-            await event.edit(f"✅ **{res}** установлен!\n📎 `{fn}` | 🔧 {cc} cmd{cl}{sc}")
+                sc = f"\n⚙️ {len(m.settings_schema)} настроек"
+            deps_lines = "\n".join(res.split("\n")[1:]) if "\n" in res else ""
+            await event.edit(f"✅ **{mod_name}** | 🔧 {cc} cmd{cl}{sc}\n{deps_lines}")
         else:
             await event.edit(f"❌ {res}")
 
@@ -1362,30 +1661,25 @@ def load_core_module(bot: "Userbot"):
     async def cmd_dlm(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
-            await event.edit(
-                f"🌐 `{p}dlm <url>`\n\n"
-                f"GitHub, Gist, прямые ссылки на .py\n"
-                f"GitHub blob → raw автоматически"
-            )
+            await event.edit(f"🌐 `{p}dlm <url>`\nGitHub, Gist, прямые .py ссылки")
             return
         url = a[1].strip()
         if not url.startswith(("http://", "https://")):
             await event.edit("❌ http(s)://")
             return
-        await event.edit(f"🌐 Скачиваю...")
+        await event.edit("🌐 Скачиваю...")
         ok, res = await bot.module_manager.install_from_url(url)
         if ok:
-            m = bot.module_manager.modules.get(res)
+            mod_name = res.split("\n")[0]
+            m = bot.module_manager.modules.get(mod_name)
             cc = len(m.commands) if m else 0
             cl = ""
             if m and m.commands:
                 cl = "\n\n**Команды:**\n" + "".join(
                     f"  `{p}{c}` — {cmd.description}\n" for c, cmd in m.commands.items()
                 )
-            sc = ""
-            if m and m.settings_schema:
-                sc = f"\n⚙️ {len(m.settings_schema)} настроек"
-            await event.edit(f"✅ **{res}** | 🔧 {cc} cmd{cl}{sc}")
+            deps_lines = "\n".join(res.split("\n")[1:]) if "\n" in res else ""
+            await event.edit(f"✅ **{mod_name}** | 🔧 {cc} cmd{cl}\n{deps_lines}")
         else:
             await event.edit(f"❌ {res}")
 
@@ -1403,16 +1697,348 @@ def load_core_module(bot: "Userbot"):
                 cc = len(m.commands)
                 tc += cc
                 sc = f" ⚙️{len(m.settings_schema)}" if m.settings_schema else ""
-                t += f"🟢 **{n}** `v{m.version}` {src} [{cc}cmd{sc}]\n"
+                reqs = info.get("requirements", [])
+                deps = f" 📦{len(reqs)}" if reqs else ""
+                t += f"🟢 **{n}** `v{m.version}` {src} [{cc}cmd{sc}{deps}]\n"
                 for cn in m.commands:
                     t += f"   └ `{p}{cn}`\n"
+                if reqs:
+                    t += f"   📦 `{', '.join(reqs)}`\n"
             t += f"\n📊 {len(um)} модулей, {tc} команд"
         await event.edit(truncate(t))
+
+    async def cmd_pip(event):
+        """Управление pip-пакетами: install, uninstall, check, list, deps."""
+        a = event.raw_text.split(maxsplit=2)
+        if len(a) < 2:
+            await event.edit(
+                f"📦 **Управление пакетами**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"`{p}pip install <pkg>` — установить\n"
+                f"`{p}pip uninstall <pkg>` — удалить\n"
+                f"`{p}pip check <pkg>` — проверить\n"
+                f"`{p}pip search <pkg>` — версия пакета\n"
+                f"`{p}pip list` — установленные (pip list)\n"
+                f"`{p}pip deps <модуль>` — зависимости модуля\n"
+            )
+            return
+
+        sub = a[1].lower()
+
+        if sub == "install":
+            if len(a) < 3:
+                await event.edit(f"❌ `{p}pip install <pkg>`")
+                return
+            pkg = a[2].strip()
+            if is_package_installed(pkg):
+                await event.edit(f"✅ `{pkg}` уже установлен")
+                return
+            await event.edit(f"📥 Устанавливаю `{pkg}`...")
+            ok, msg = await async_install_pip_package(pkg)
+            if ok:
+                await event.edit(f"✅ `{pkg}` установлен!")
+            else:
+                await event.edit(f"❌ {msg}")
+
+        elif sub == "uninstall":
+            if len(a) < 3:
+                await event.edit(f"❌ `{p}pip uninstall <pkg>`")
+                return
+            pkg = a[2].strip()
+            await event.edit(f"🗑 Удаляю `{pkg}`...")
+            ok, msg = uninstall_pip_package(pkg)
+            if ok:
+                await event.edit(f"✅ `{pkg}` удалён")
+            else:
+                await event.edit(f"❌ {msg}")
+
+        elif sub == "check":
+            if len(a) < 3:
+                await event.edit(f"❌ `{p}pip check <pkg>`")
+                return
+            pkg = a[2].strip()
+            installed = is_package_installed(pkg)
+            status = "✅ установлен" if installed else "❌ не установлен"
+            ver = ""
+            if installed:
+                try:
+                    from importlib.metadata import version as get_version
+                    base = re.split(r'[><=!~]', pkg)[0].strip()
+                    ver = f" `v{get_version(base)}`"
+                except Exception:
+                    pass
+            await event.edit(f"📦 `{pkg}`: {status}{ver}")
+
+        elif sub == "search":
+            if len(a) < 3:
+                await event.edit(f"❌ `{p}pip search <pkg>`")
+                return
+            pkg = a[2].strip()
+            try:
+                from importlib.metadata import version as get_version, metadata
+                base = re.split(r'[><=!~]', pkg)[0].strip()
+                ver = get_version(base)
+                meta = metadata(base)
+                summary = meta.get("Summary", "—")
+                author = meta.get("Author", "—")
+                await event.edit(
+                    f"📦 **{base}** `v{ver}`\n"
+                    f"📝 {summary}\n"
+                    f"👤 {author}"
+                )
+            except Exception:
+                await event.edit(f"❌ `{pkg}` не найден или не установлен")
+
+        elif sub == "list":
+            await event.edit("📋 Загрузка...")
+            try:
+                proc = await asyncio.create_subprocess_exec(
+                    sys.executable, "-m", "pip", "list", "--format=columns",
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+                stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
+                output = stdout.decode().strip()
+                lines = output.split("\n")
+                count = max(0, len(lines) - 2)
+                if len(output) > 3500:
+                    output = "\n".join(lines[:50]) + f"\n\n... и ещё {count - 48} пакетов"
+                await event.edit(f"📋 **Пакеты** ({count}):\n```\n{output}\n```")
+            except Exception as e:
+                await event.edit(f"❌ {e}")
+
+        elif sub == "deps":
+            if len(a) < 3:
+                await event.edit(f"❌ `{p}pip deps <модуль>`")
+                return
+            mod_name = a[2].strip().lower()
+            mod_obj = bot.module_manager.modules.get(mod_name)
+            inst = bot.config.get("installed_modules", {})
+            info = inst.get(mod_name, {})
+            reqs = info.get("requirements", [])
+            if mod_obj and mod_obj.requirements:
+                reqs = mod_obj.requirements
+
+            if not reqs:
+                fp = Path(MODULES_DIR) / f"{mod_name}.py"
+                if fp.exists():
+                    content = fp.read_text(encoding="utf-8", errors="replace")
+                    reqs = parse_module_requirements(content)
+
+            if not reqs:
+                await event.edit(f"📦 `{mod_name}`: зависимостей нет")
+                return
+
+            t = f"📦 **{mod_name}** — зависимости:\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+            for r in reqs:
+                installed = is_package_installed(r)
+                icon = "✅" if installed else "❌"
+                ver = ""
+                if installed:
+                    try:
+                        from importlib.metadata import version as get_version
+                        base = re.split(r'[><=!~]', r)[0].strip()
+                        ver = f" `v{get_version(base)}`"
+                    except Exception:
+                        pass
+                t += f"  {icon} `{r}`{ver}\n"
+            await event.edit(t)
+
+        else:
+            await event.edit(f"❌ Неизвестная подкоманда: `{sub}`")
+
+    async def cmd_fcfg(event):
+        """Управление настройками модулей: set, remove, reset."""
+        args = event.raw_text.split()
+        # args[0] = ".fcfg"
+
+        if len(args) < 2:
+            # Показать справку
+            t = (
+                f"⚙️ **Управление настройками модулей**\n"
+                f"━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"`{p}fcfg set -m <модуль> <параметр> <значение>` — установить\n"
+                f"`{p}fcfg remove -m <модуль> <параметр>` — удалить\n"
+                f"`{p}fcfg reset -m <модуль>` — сбросить все настройки модуля\n\n"
+                f"**Пример:**\n"
+                f"`{p}fcfg set -m mymod greeting Привет!`\n"
+                f"`{p}fcfg remove -m mymod greeting`\n"
+                f"`{p}fcfg reset -m mymod`\n"
+            )
+            await event.edit(t)
+            return
+
+        action = args[1].lower()
+
+        if action not in ("set", "remove", "reset"):
+            await event.edit(f"❌ Неизвестный аргумент: `{action}`\nДопустимо: `set`, `remove`, `reset`")
+            return
+
+        # Ищем флаг -m
+        if "-m" not in args:
+            await event.edit(f"❌ Укажите модуль: `-m <название_модуля>`")
+            return
+
+        m_index = args.index("-m")
+        if m_index + 1 >= len(args):
+            await event.edit(f"❌ После `-m` укажите название модуля")
+            return
+
+        mod_name = args[m_index + 1]
+
+        # Проверяем существование модуля
+        mod_obj = bot.module_manager.modules.get(mod_name)
+        if not mod_obj:
+            # Попробуем найти без учёта регистра
+            for mn in bot.module_manager.modules:
+                if mn.lower() == mod_name.lower():
+                    mod_name = mn
+                    mod_obj = bot.module_manager.modules[mn]
+                    break
+
+        if not mod_obj:
+            available = ", ".join(f"`{n}`" for n in bot.module_manager.modules)
+            await event.edit(f"❌ Модуль `{mod_name}` не найден\n\n📦 Доступные: {available}")
+            return
+
+        # Оставшиеся аргументы после модуля
+        remaining = args[m_index + 2:]
+
+        if action == "set":
+            if len(remaining) < 2:
+                # Показать доступные настройки модуля
+                if mod_obj.settings_schema:
+                    t = f"⚙️ **Настройки `{mod_name}`:**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    custom = bot.config.data.get("custom_settings", {})
+                    for s in mod_obj.settings_schema:
+                        fk = f"{mod_name}.{s['key']}"
+                        cur = custom.get(fk, s.get("default", "—"))
+                        stype = s.get("type", "str")
+                        desc = s.get("description", "")
+                        t += f"  `{s['key']}` = `{cur}` ({stype})\n"
+                        if s.get("label"):
+                            t += f"    📝 {s['label']}\n"
+                        if desc:
+                            t += f"    ℹ️ _{desc}_\n"
+                    t += f"\n💡 `{p}fcfg set -m {mod_name} <параметр> <значение>`"
+                    await event.edit(t)
+                else:
+                    await event.edit(
+                        f"❌ `{p}fcfg set -m {mod_name} <параметр> <значение>`\n\n"
+                        f"⚠️ У модуля `{mod_name}` нет объявленных настроек (settings_schema),\n"
+                        f"но вы всё равно можете задать произвольный параметр."
+                    )
+                return
+
+            param = remaining[0]
+            # Значение — всё остальное (чтобы поддержать пробелы в значении)
+            # Нужно извлечь значение из оригинального текста, чтобы сохранить пробелы
+            # Находим позицию параметра в оригинальном тексте и берём всё после него
+            raw = event.raw_text
+            # Ищем позицию param после -m mod_name
+            param_pos = raw.find(param, raw.find(mod_name) + len(mod_name))
+            if param_pos != -1:
+                value = raw[param_pos + len(param):].strip()
+            else:
+                value = " ".join(remaining[1:])
+
+            if not value:
+                await event.edit(f"❌ Укажите значение: `{p}fcfg set -m {mod_name} {param} <значение>`")
+                return
+
+            # Валидация по schema если есть
+            schema_entry = None
+            if mod_obj.settings_schema:
+                for s in mod_obj.settings_schema:
+                    if s["key"] == param:
+                        schema_entry = s
+                        break
+
+            # Приведение типа если есть schema
+            if schema_entry:
+                stype = schema_entry.get("type", "str")
+                try:
+                    if stype == "int":
+                        int(value)  # проверка
+                    elif stype == "float":
+                        float(value)
+                    elif stype == "bool":
+                        if value.lower() not in ("true", "false", "1", "0", "yes", "no", "да", "нет", "on", "off"):
+                            await event.edit(
+                                f"❌ Параметр `{param}` имеет тип `bool`\n"
+                                f"Допустимые значения: `true/false`, `1/0`, `yes/no`, `on/off`"
+                            )
+                            return
+                except ValueError:
+                    await event.edit(f"❌ Параметр `{param}` должен быть типа `{stype}`, получено: `{value}`")
+                    return
+
+            module_config_set(bot, mod_name, param, value)
+
+            # Верификация
+            saved = bot.config.data.get("custom_settings", {}).get(f"{mod_name}.{param}")
+            label = ""
+            if schema_entry and schema_entry.get("label"):
+                label = f" ({schema_entry['label']})"
+
+            if saved == value:
+                await event.edit(f"✅ `{mod_name}.{param}`{label} = `{value}`")
+            else:
+                await event.edit(f"⚠️ Ошибка сохранения `{mod_name}.{param}`")
+
+        elif action == "remove":
+            if len(remaining) < 1:
+                await event.edit(f"❌ `{p}fcfg remove -m {mod_name} <параметр>`")
+                return
+
+            param = remaining[0]
+            full_key = f"{mod_name}.{param}"
+            custom = dict(bot.config.data.get("custom_settings", {}))
+
+            if full_key not in custom:
+                await event.edit(f"❌ Параметр `{mod_name}.{param}` не установлен в custom_settings")
+                return
+
+            del custom[full_key]
+            bot.config.data["custom_settings"] = custom
+            bot.config.save()
+
+            # Покажем значение по умолчанию если есть
+            default_val = None
+            if mod_obj.settings_schema:
+                for s in mod_obj.settings_schema:
+                    if s["key"] == param:
+                        default_val = s.get("default")
+                        break
+
+            msg = f"✅ Параметр `{mod_name}.{param}` удалён из настроек"
+            if default_val is not None:
+                msg += f"\n📎 Значение по умолчанию: `{default_val}`"
+            await event.edit(msg)
+
+        elif action == "reset":
+            custom = dict(bot.config.data.get("custom_settings", {}))
+            prefix_key = f"{mod_name}."
+            keys_to_remove = [k for k in custom if k.startswith(prefix_key)]
+
+            if not keys_to_remove:
+                await event.edit(f"ℹ️ У модуля `{mod_name}` нет пользовательских настроек для сброса")
+                return
+
+            for k in keys_to_remove:
+                del custom[k]
+
+            bot.config.data["custom_settings"] = custom
+            bot.config.save()
+
+            await event.edit(
+                f"✅ Сброшено **{len(keys_to_remove)}** настроек модуля `{mod_name}`:\n"
+                + "\n".join(f"  🗑 `{k}`" for k in keys_to_remove)
+            )
 
     mod.commands = {
         "alive": Command("alive", cmd_alive, "Проверка", "core", f"{p}alive"),
         "kinfo": Command("kinfo", cmd_kinfo, "Инфо-карточка", "core", f"{p}kinfo"),
-        "kset": Command("kset", cmd_kinfo_set, "Настройки kinfo", "core", f"{p}kset <sub>"),
+        "kset": Command("kset", cmd_kset, "Настройки kinfo", "core", f"{p}kset <sub>"),
         "help": Command("help", cmd_help, "Помощь", "core", f"{p}help [cmd]"),
         "ping": Command("ping", cmd_ping, "Пинг", "core", f"{p}ping"),
         "prefix": Command("prefix", cmd_prefix, "Префикс", "core", f"{p}prefix <new>"),
@@ -1423,10 +2049,12 @@ def load_core_module(bot: "Userbot"):
         "settings": Command("settings", cmd_settings, "Inline панель", "core", f"{p}settings"),
         "settoken": Command("settoken", cmd_settoken, "Bot token", "core", f"{p}settoken"),
         "status": Command("status", cmd_status, "Статус", "core", f"{p}status"),
-        "im": Command("im", cmd_im, "Установить модуль (файл)", "core", f"{p}im"),
+        "im": Command("im", cmd_im, "Установить (файл)", "core", f"{p}im"),
         "um": Command("um", cmd_um, "Удалить модуль", "core", f"{p}um <name>"),
-        "dlm": Command("dlm", cmd_dlm, "Скачать модуль (URL)", "core", f"{p}dlm <url>"),
-        "lm": Command("lm", cmd_lm, "Список польз. модулей", "core", f"{p}lm"),
+        "dlm": Command("dlm", cmd_dlm, "Скачать (URL)", "core", f"{p}dlm <url>"),
+        "lm": Command("lm", cmd_lm, "Польз. модули", "core", f"{p}lm"),
+        "pip": Command("pip", cmd_pip, "Управление пакетами", "core", f"{p}pip <sub>"),
+        "fcfg": Command("fcfg", cmd_fcfg, "Настройки модулей", "core", f"{p}fcfg <set/remove/reset> -m <module> [param] [value]"),
     }
 
     bot.module_manager.register_module(mod)
@@ -1590,7 +2218,9 @@ def load_fun_module(bot: "Userbot"):
     async def _gt(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) > 1: return a[1]
-        if event.is_reply: return (await (await event.get_reply_message())).text or ""
+        if event.is_reply:
+            r = await event.get_reply_message()
+            return r.text or ""
         return None
 
     async def cmd_reverse(event):
@@ -1798,42 +2428,29 @@ class Userbot:
             self._command_handlers[cn] = cmd
 
     async def build_kinfo_text(self, ping_start: float = None) -> str:
-        """Собирает текст kinfo из шаблона и настроек."""
-        ki = self.config.get("kinfo", {})
+        ki = self.config.data.get("kinfo", {})
         template = ki.get("template", DEFAULT_KINFO_TEMPLATE)
         emoji = ki.get("emoji", BRAND_EMOJI)
-
-        # Пинг
         if ping_start:
             ping = f"{(time.time() - ping_start) * 1000:.1f}"
         else:
             s = time.time()
             await self.client.get_me()
             ping = f"{(time.time() - s) * 1000:.1f}"
-
         me = await self.client.get_me()
         um = len(self.module_manager.get_user_modules())
         tm = len(self.module_manager.modules)
         bi = tm - um
-
-        # Кастомные строки
         custom_lines_list = ki.get("custom_lines", [])
         custom_lines_text = ""
         if custom_lines_list:
             for line in custom_lines_list:
                 custom_lines_text += f"├ {line}\n"
-
-        # Собираем переменные
         vars_dict = {
-            "emoji": emoji,
-            "brand": BRAND_NAME,
-            "version": BRAND_VERSION,
-            "owner": await get_user_link(me),
-            "ping": ping,
+            "emoji": emoji, "brand": BRAND_NAME, "version": BRAND_VERSION,
+            "owner": await get_user_link(me), "ping": ping,
             "uptime": format_uptime(time.time() - self.start_time),
-            "modules": str(tm),
-            "builtin": str(bi),
-            "user_mods": str(um),
+            "modules": str(tm), "builtin": str(bi), "user_mods": str(um),
             "commands": str(len(self._command_handlers)),
             "prefix": self.config.prefix,
             "python": platform.python_version(),
@@ -1841,49 +2458,27 @@ class Userbot:
             "os": f"{platform.system()} {platform.release()}",
             "custom_lines": custom_lines_text,
         }
-
-        # Фильтруем по toggles
         try:
             text = template.format(**vars_dict)
         except (KeyError, IndexError, ValueError):
-            # Fallback
             text = DEFAULT_KINFO_TEMPLATE.format(**vars_dict)
-
-        # Удаляем строки с выключенными полями
         lines = text.split("\n")
         filtered = []
         hide_map = {
-            "show_ping": "{ping}",
-            "show_uptime": "{uptime}",
-            "show_modules": "{modules}",
-            "show_commands": "{commands}",
-            "show_prefix": "{prefix}",
-            "show_python": "{python}",
-            "show_telethon": "{telethon}",
-            "show_os": "{os}",
-            "show_owner": "{owner}",
+            "show_ping": "ping", "show_uptime": "uptime", "show_modules": "modules",
+            "show_commands": "commands", "show_prefix": "prefix", "show_python": "python",
+            "show_telethon": "telethon", "show_os": "os", "show_owner": "owner",
         }
-
-        # Проверяем какие поля скрыты
-        hidden_values = set()
-        for toggle_key, var_placeholder in hide_map.items():
-            if not ki.get(toggle_key, True):
-                # Определяем значение переменной
-                var_name = var_placeholder.strip("{}")
-                hidden_values.add(vars_dict.get(var_name, ""))
-
         for line in lines:
             skip = False
-            for toggle_key, var_placeholder in hide_map.items():
+            for toggle_key, var_name in hide_map.items():
                 if not ki.get(toggle_key, True):
-                    var_name = var_placeholder.strip("{}")
-                    val = vars_dict.get(var_name, "НЕВОЗМОЖНО_СОВПАСТЬ")
+                    val = vars_dict.get(var_name, "")
                     if val and val in line and len(val) > 2:
                         skip = True
                         break
             if not skip:
                 filtered.append(line)
-
         return "\n".join(filtered)
 
     async def _handle_command(self, event):
@@ -1897,9 +2492,10 @@ class Userbot:
         cn = parts[0].lower()
         cmd = self._command_handlers.get(cn)
         if cmd:
-            stats = self.config.get("stats", {})
+            stats = self.config.data.get("stats", {})
             stats["commands_used"] = stats.get("commands_used", 0) + 1
-            self.config.set("stats", stats)
+            self.config.data["stats"] = stats
+            self.config.save()
             try:
                 await cmd.handler(event)
             except Exception as e:
@@ -1936,7 +2532,7 @@ class Userbot:
 
         log.info("━" * 45)
         log.info(f"{BRAND_EMOJI} {BRAND_NAME} v{BRAND_VERSION}")
-        log.info(f"📦 {tm} модулей (🔵{tm-um} 🟢{um}) | 🔧 {len(self._command_handlers)} команд")
+        log.info(f"📦 {tm} модулей (🔵{tm - um} 🟢{um}) | 🔧 {len(self._command_handlers)} команд")
         log.info(f"🔑 {self.config.prefix}")
         if self.inline_panel.active:
             ib = await self.inline_panel.inline_bot.get_me()
