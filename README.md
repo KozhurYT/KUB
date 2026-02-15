@@ -16,8 +16,19 @@ KUB - это аббревиатура от kazhurkeUserBot - моего Userbot-
 
 Шаг 4: создайте окружение micromamba: micromamba create -n kub python=3.13.7
 
-Шаг 5: выполните команду pip install telethon cryptg
+Шаг 5: войдите в окружение micromamba activate kub
 
-Шаг 6: запустите бота при помощи команды python kazhurkeUserBot.py
+Шаг 6: выполните команду pip install telethon cryptg
 
-Шаг 7: пользуйтесь!
+Шаг 7: запустите бота при помощи команды python kazhurkeUserBot.py
+
+Шаг 8: пользуйтесь!
+
+# Как устанавливать зависимости к модулям?
+На данном этапе проекта установка зависимостей к модулям осуществляется следующим образом:
+
+Инициализируйте micromamba в текущем shell-е (в моем случае это: eval "$(micromamba shell hook --shell fish)" )
+
+Войдите в окружение в котором находится kUB (например: micromamba activate kub)
+
+Напишите pip install *название зависимости*, благо kUB сам их говорит если установка прошла неудачно из-за отсутствия зависимостей
