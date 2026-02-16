@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════╗
-║           kazhurkeUserBot v2.3.0                        ║
+║           kazhurkeUserBot v2.4.0                        ║
 ║     Однофайловый Telegram Userbot с модулями            ║
 ║         и inline-панелью управления                     ║
 ║     + автоустановка зависимостей модулей                 ║
+║     + HTML разметка + custom emoji                      ║
 ╚══════════════════════════════════════════════════════════╝
 
 Зависимости: pip install telethon cryptg aiohttp
@@ -51,7 +52,7 @@ except ImportError:
 # ──────────────────────── Брендинг ───────────────────────────
 
 BRAND_NAME = "kazhurkeUserBot"
-BRAND_VERSION = "2.3.0"
+BRAND_VERSION = "2.4.0"
 BRAND_EMOJI = "🦊"
 BRAND_SHORT = "KUB"
 
@@ -62,9 +63,181 @@ BANNER = f"""
 ║                                                  ║
 ║   Telegram Userbot с модулями и inline-панелью   ║
 ║   + автоустановка зависимостей                   ║
+║   + HTML разметка + custom emoji                 ║
 ║                                                  ║
 ╚══════════════════════════════════════════════════╝\033[0m
 """
+
+# ──────────────────────── Custom Emoji ───────────────────────
+
+_HAS_PREMIUM = False
+
+
+def _make_ce(emoji_id: int, fallback: str) -> str:
+    if _HAS_PREMIUM:
+        return f'<tg-emoji emoji-id="{emoji_id}">{fallback}</tg-emoji>'
+    return fallback
+
+
+class CEmoji:
+    def __init__(self):
+        self._init_emojis()
+
+    def _init_emojis(self):
+        self.BRAND = _make_ce(5368324170671202286, "🦊")
+        self.STAR = _make_ce(5368324170671202286, "⭐")
+        self.CHECK = _make_ce(5382322526065218755, "✅")
+        self.CROSS = _make_ce(5368324170671202286, "❌")
+        self.WARN = _make_ce(5467928559664242360, "⚠️")
+        self.GEAR = _make_ce(5431449001532594346, "⚙️")
+        self.FIRE = _make_ce(5386399931378440750, "🔥")
+        self.SPARK = _make_ce(5368324170671202286, "✨")
+        self.USER = _make_ce(5368324170671202286, "👤")
+        self.PING = _make_ce(5382322526065218755, "🏓")
+        self.CLOCK = _make_ce(5431449001532594346, "⏱")
+        self.PACKAGE = _make_ce(5467928559664242360, "📦")
+        self.WRENCH = _make_ce(5386399931378440750, "🔧")
+        self.KEY = _make_ce(5368324170671202286, "🔑")
+        self.PYTHON = _make_ce(5386399931378440750, "🐍")
+        self.SIGNAL = _make_ce(5431449001532594346, "📡")
+        self.PC = _make_ce(5467928559664242360, "💻")
+        self.PLUG = _make_ce(5382322526065218755, "🔌")
+        self.CHART = _make_ce(5368324170671202286, "📊")
+        self.STATS = _make_ce(5431449001532594346, "📈")
+        self.BOT = _make_ce(5386399931378440750, "🤖")
+        self.RELOAD = _make_ce(5382322526065218755, "🔄")
+        self.BLUE = _make_ce(5368324170671202286, "🔵")
+        self.GREEN = _make_ce(5382322526065218755, "🟢")
+        self.RED = _make_ce(5467928559664242360, "🔴")
+        self.DOWNLOAD = _make_ce(5431449001532594346, "📥")
+        self.TRASH = _make_ce(5386399931378440750, "🗑")
+        self.SEARCH = _make_ce(5368324170671202286, "🔍")
+        self.CALC = _make_ce(5382322526065218755, "🔢")
+        self.PIN = _make_ce(5431449001532594346, "📌")
+        self.DICE = _make_ce(5467928559664242360, "🎲")
+        self.COIN = _make_ce(5386399931378440750, "🪙")
+        self.TARGET = _make_ce(5368324170671202286, "🎯")
+        self.HAMMER = _make_ce(5382322526065218755, "🔨")
+        self.BOOT = _make_ce(5431449001532594346, "👢")
+        self.MUTE = _make_ce(5467928559664242360, "🔇")
+        self.PAINT = _make_ce(5368324170671202286, "🎨")
+        self.BOOK = _make_ce(5382322526065218755, "📖")
+        self.BULB = _make_ce(5431449001532594346, "💡")
+        self.ID = _make_ce(5386399931378440750, "🆔")
+        self.LINK = _make_ce(5368324170671202286, "🔗")
+        self.CHAT = _make_ce(5382322526065218755, "💬")
+        self.WAVE = _make_ce(5368324170671202286, "👋")
+        self.EMPTY = _make_ce(5431449001532594346, "📭")
+        self.GLOBE = _make_ce(5467928559664242360, "🌐")
+        self.FILE = _make_ce(5386399931378440750, "📎")
+
+
+CE = CEmoji()
+
+
+def _reinit_custom_emoji():
+    global CE
+    CE._init_emojis()
+
+
+# ──────────────────────── HTML-утилиты ───────────────────────
+
+
+def html_escape(text: str) -> str:
+    return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def html_bold(text: str) -> str:
+    return f"<b>{text}</b>"
+
+
+def html_italic(text: str) -> str:
+    return f"<i>{text}</i>"
+
+
+def html_code(text: str) -> str:
+    return f"<code>{html_escape(text)}</code>"
+
+
+def html_pre(text: str, lang: str = "") -> str:
+    if lang:
+        return f'<pre><code class="language-{lang}">{html_escape(text)}</code></pre>'
+    return f"<pre>{html_escape(text)}</pre>"
+
+
+def html_link(text: str, url: str) -> str:
+    return f'<a href="{url}">{text}</a>'
+
+
+def html_user_link(name: str, user_id: int) -> str:
+    return f'<a href="tg://user?id={user_id}">{html_escape(name)}</a>'
+
+
+def custom_emoji(emoji_id: int, fallback: str = "⭐") -> str:
+    return _make_ce(emoji_id, fallback)
+
+
+def _strip_custom_emoji(text: str) -> str:
+    """Убирает tg-emoji теги, оставляя fallback текст."""
+    return re.sub(r'<tg-emoji[^>]*>([^<]*)</tg-emoji>', r'\1', text)
+
+
+async def safe_edit(event, text: str, **kwargs):
+    """Безопасное редактирование с fallback при ошибке custom emoji."""
+    kwargs.setdefault("parse_mode", "html")
+    try:
+        await event.edit(text, **kwargs)
+    except Exception as e:
+        err_str = str(e).lower()
+        if "invalid" in err_str or "document" in err_str or "emoji" in err_str:
+            clean = _strip_custom_emoji(text)
+            try:
+                await event.edit(clean, **kwargs)
+            except Exception:
+                plain = re.sub(r'<[^>]+>', '', clean)
+                try:
+                    await event.edit(plain)
+                except Exception:
+                    pass
+        else:
+            raise
+
+
+async def safe_send(client, chat_id, text: str, **kwargs):
+    """Безопасная отправка с fallback."""
+    kwargs.setdefault("parse_mode", "html")
+    try:
+        return await client.send_message(chat_id, text, **kwargs)
+    except Exception as e:
+        err_str = str(e).lower()
+        if "invalid" in err_str or "document" in err_str or "emoji" in err_str:
+            clean = _strip_custom_emoji(text)
+            try:
+                return await client.send_message(chat_id, clean, **kwargs)
+            except Exception:
+                plain = re.sub(r'<[^>]+>', '', clean)
+                return await client.send_message(chat_id, plain)
+        else:
+            raise
+
+
+async def safe_send_file(client, chat_id, file, caption: str = "", **kwargs):
+    """Безопасная отправка файла с fallback для caption."""
+    kwargs.setdefault("parse_mode", "html")
+    try:
+        return await client.send_file(chat_id, file, caption=caption, **kwargs)
+    except Exception as e:
+        err_str = str(e).lower()
+        if "invalid" in err_str or "document" in err_str or "emoji" in err_str:
+            clean = _strip_custom_emoji(caption)
+            try:
+                return await client.send_file(chat_id, file, caption=clean, **kwargs)
+            except Exception:
+                plain = re.sub(r'<[^>]+>', '', clean)
+                return await client.send_file(chat_id, file, caption=plain, parse_mode=None)
+        else:
+            raise
+
 
 # ──────────────────────── Логирование ────────────────────────
 
@@ -113,26 +286,31 @@ CONFIG_FILE = "kub_config.json"
 MODULES_DIR = "modules"
 DEFAULT_PREFIX = "."
 
-DEFAULT_KINFO_TEMPLATE = (
-    "{emoji} **{brand}** v{version}\n"
-    "━━━━━━━━━━━━━━━━━━━━━\n"
-    "├ 👤 Владелец: {owner}\n"
-    "├ 🏓 Пинг: {ping}ms\n"
-    "├ ⏱ Аптайм: {uptime}\n"
-    "├ 📦 Модулей: {modules} (🔵{builtin} 🟢{user_mods})\n"
-    "├ 🔧 Команд: {commands}\n"
-    "├ 🔑 Префикс: {prefix}\n"
-    "├ 🐍 Python: {python}\n"
-    "├ 📡 Telethon: {telethon}\n"
-    "└ 💻 {os}\n"
-)
 
-DEFAULT_ALIVE_MSG = (
-    "{emoji} **{brand}** работает!\n"
-    "├ ⏱ {uptime}\n"
-    "├ 📦 {modules} модулей\n"
-    "└ 🔧 {commands} команд"
-)
+def get_default_kinfo_template():
+    return (
+        f"{CE.BRAND} <b>{{brand}}</b> v{{version}}\n"
+        "━━━━━━━━━━━━━━━━━━━━━\n"
+        f"├ {CE.USER} Владелец: {{owner}}\n"
+        f"├ {CE.PING} Пинг: {{ping}}ms\n"
+        f"├ {CE.CLOCK} Аптайм: {{uptime}}\n"
+        f"├ {CE.PACKAGE} Модулей: {{modules}} ({CE.BLUE}{{builtin}} {CE.GREEN}{{user_mods}})\n"
+        f"├ {CE.WRENCH} Команд: {{commands}}\n"
+        f"├ {CE.KEY} Префикс: {{prefix}}\n"
+        f"├ {CE.PYTHON} Python: {{python}}\n"
+        f"├ {CE.SIGNAL} Telethon: {{telethon}}\n"
+        f"└ {CE.PC} {{os}}\n"
+    )
+
+
+def get_default_alive_msg():
+    return (
+        f"{CE.BRAND} <b>{{brand}}</b> работает!\n"
+        f"├ {CE.CLOCK} {{uptime}}\n"
+        f"├ {CE.PACKAGE} {{modules}} модулей\n"
+        f"└ {CE.WRENCH} {{commands}} команд"
+    )
+
 
 # ──────────────────────── Утилиты ────────────────────────────
 
@@ -157,9 +335,10 @@ async def get_user_link(user) -> str:
     if not user:
         return "Unknown"
     name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Deleted"
+    escaped = html_escape(name)
     if user.username:
-        return f"[{name}](https://t.me/{user.username})"
-    return f"[{name}](tg://user?id={user.id})"
+        return html_link(escaped, f"https://t.me/{user.username}")
+    return html_user_link(name, user.id)
 
 
 def get_raw_github_url(url: str) -> str:
@@ -174,45 +353,19 @@ def get_raw_github_url(url: str) -> str:
 # ──────────────── Управление зависимостями ───────────────────
 
 PIP_TO_IMPORT = {
-    "pillow": "PIL",
-    "python-dateutil": "dateutil",
-    "beautifulsoup4": "bs4",
-    "scikit-learn": "sklearn",
-    "opencv-python": "cv2",
-    "opencv-python-headless": "cv2",
-    "python-telegram-bot": "telegram",
-    "pyyaml": "yaml",
-    "pycryptodome": "Crypto",
-    "python-dotenv": "dotenv",
-    "google-api-python-client": "googleapiclient",
-    "python-magic": "magic",
-    "attrs": "attr",
-    "moviepy": "moviepy",
-    "gtts": "gtts",
-    "pydub": "pydub",
-    "speedtest-cli": "speedtest",
-    "wikipedia": "wikipedia",
-    "translate": "translate",
-    "qrcode": "qrcode",
-    "cryptg": "cryptg",
+    "pillow": "PIL", "python-dateutil": "dateutil", "beautifulsoup4": "bs4",
+    "scikit-learn": "sklearn", "opencv-python": "cv2", "opencv-python-headless": "cv2",
+    "python-telegram-bot": "telegram", "pyyaml": "yaml", "pycryptodome": "Crypto",
+    "python-dotenv": "dotenv", "google-api-python-client": "googleapiclient",
+    "python-magic": "magic", "attrs": "attr", "moviepy": "moviepy", "gtts": "gtts",
+    "pydub": "pydub", "speedtest-cli": "speedtest", "wikipedia": "wikipedia",
+    "translate": "translate", "qrcode": "qrcode", "cryptg": "cryptg",
 }
 
 
 def parse_module_requirements(content: str) -> List[str]:
-    """
-    Парсит зависимости из исходного кода модуля.
-
-    Форматы:
-      # requires: aiohttp, Pillow, pydub
-      # require: aiohttp
-      # deps: aiohttp, Pillow
-      # dependencies: aiohttp
-      __requires__ = ["aiohttp", "Pillow>=9.0"]
-      __dependencies__ = ["aiohttp"]
-    """
     requires: List[str] = []
     seen: set = set()
-
     for line in content.split("\n"):
         stripped = line.strip()
         for prefix_kw in ("# requires:", "# require:", "# deps:", "# dependencies:"):
@@ -223,7 +376,6 @@ def parse_module_requirements(content: str) -> List[str]:
                     if pkg and pkg.lower() not in seen:
                         requires.append(pkg)
                         seen.add(pkg.lower())
-
     for var_name in ("__requires__", "__dependencies__", "__deps__"):
         pattern = rf'{var_name}\s*=\s*\[([^\]]*)\]'
         match = re.search(pattern, content)
@@ -234,54 +386,42 @@ def parse_module_requirements(content: str) -> List[str]:
                 if item and item.lower() not in seen:
                     requires.append(item)
                     seen.add(item.lower())
-
     return requires
 
 
 def _get_import_name(pip_name: str) -> str:
-    """Получить имя для import из pip-имени пакета."""
     base = re.split(r'[><=!~]', pip_name)[0].strip()
     mapped = PIP_TO_IMPORT.get(base.lower())
-    if mapped:
-        return mapped
-    return base.replace("-", "_")
+    return mapped if mapped else base.replace("-", "_")
 
 
 def is_package_installed(package: str) -> bool:
-    """Проверяет, установлен ли пакет."""
     base = re.split(r'[><=!~]', package)[0].strip()
     import_name = _get_import_name(package)
-
     try:
         importlib.import_module(import_name)
         return True
     except ImportError:
         pass
-
     try:
         from importlib.metadata import distribution
         distribution(base)
         return True
     except Exception:
         pass
-
     try:
         importlib.import_module(base.replace("-", "_").lower())
         return True
     except ImportError:
         pass
-
     return False
 
 
 def install_pip_package(package: str, timeout: int = 120) -> Tuple[bool, str]:
-    """Устанавливает пакет через pip синхронно."""
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", package, "--quiet"],
-            capture_output=True,
-            text=True,
-            timeout=timeout,
+            capture_output=True, text=True, timeout=timeout,
         )
         if result.returncode == 0:
             importlib.invalidate_caches()
@@ -298,13 +438,10 @@ def install_pip_package(package: str, timeout: int = 120) -> Tuple[bool, str]:
 
 
 def uninstall_pip_package(package: str) -> Tuple[bool, str]:
-    """Удаляет пакет через pip."""
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "uninstall", package, "-y", "--quiet"],
-            capture_output=True,
-            text=True,
-            timeout=60,
+            capture_output=True, text=True, timeout=60,
         )
         if result.returncode == 0:
             return True, package
@@ -316,12 +453,8 @@ def uninstall_pip_package(package: str) -> Tuple[bool, str]:
 
 
 def check_and_install_requirements(content: str) -> Dict[str, Any]:
-    """
-    Парсит зависимости из content, проверяет и устанавливает отсутствующие.
-    """
     reqs = parse_module_requirements(content)
     result = {"all": reqs, "already": [], "installed": [], "failed": []}
-
     for pkg in reqs:
         if is_package_installed(pkg):
             result["already"].append(pkg)
@@ -335,24 +468,20 @@ def check_and_install_requirements(content: str) -> Dict[str, Any]:
             else:
                 result["failed"].append(msg)
                 log.error(f"❌ Не удалось установить {pkg}: {msg}")
-
     return result
 
 
 async def async_install_pip_package(package: str, timeout: int = 120) -> Tuple[bool, str]:
-    """Асинхронная установка пакета через pip."""
     try:
         proc = await asyncio.create_subprocess_exec(
             sys.executable, "-m", "pip", "install", package, "--quiet",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
         )
         try:
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
             proc.kill()
             return False, f"{package}: таймаут ({timeout}с)"
-
         if proc.returncode == 0:
             importlib.invalidate_caches()
             return True, package
@@ -366,10 +495,8 @@ async def async_install_pip_package(package: str, timeout: int = 120) -> Tuple[b
 
 
 async def async_check_and_install_requirements(content: str) -> Dict[str, Any]:
-    """Асинхронная версия check_and_install_requirements."""
     reqs = parse_module_requirements(content)
     result = {"all": reqs, "already": [], "installed": [], "failed": []}
-
     for pkg in reqs:
         if is_package_installed(pkg):
             result["already"].append(pkg)
@@ -382,7 +509,6 @@ async def async_check_and_install_requirements(content: str) -> Dict[str, Any]:
             else:
                 result["failed"].append(msg)
                 log.error(f"❌ {msg}")
-
     return result
 
 
@@ -396,13 +522,13 @@ class Config:
         "phone": "",
         "bot_token": "",
         "prefix": DEFAULT_PREFIX,
-        "alive_message": DEFAULT_ALIVE_MSG,
+        "alive_message": "",
         "disabled_modules": [],
         "custom_settings": {},
         "owner_id": 0,
         "installed_modules": {},
         "kinfo": {
-            "template": DEFAULT_KINFO_TEMPLATE,
+            "template": "",
             "emoji": BRAND_EMOJI,
             "photo": "",
             "show_ping": True,
@@ -469,10 +595,6 @@ class Config:
 
 
 def module_config(bot, mod_name: str, key: str, default=None):
-    """
-    Получить значение настройки модуля.
-    Всегда читает из config.data напрямую.
-    """
     custom = bot.config.data.get("custom_settings", {})
     full_key = f"{mod_name}.{key}"
     val = custom.get(full_key)
@@ -487,7 +609,6 @@ def module_config(bot, mod_name: str, key: str, default=None):
         if val is None:
             return default
 
-    # Приведение типов по schema
     mod = bot.module_manager.modules.get(mod_name)
     if mod and val is not None:
         for s in mod.settings_schema:
@@ -509,12 +630,10 @@ def module_config(bot, mod_name: str, key: str, default=None):
                 except (ValueError, AttributeError, TypeError):
                     return default
                 break
-
     return val
 
 
 def module_config_set(bot, mod_name: str, key: str, value):
-    """Установить настройку модуля. Пишет напрямую в config.data и сохраняет."""
     custom = dict(bot.config.data.get("custom_settings", {}))
     custom[f"{mod_name}.{key}"] = value
     bot.config.data["custom_settings"] = custom
@@ -616,16 +735,11 @@ class ModuleManager:
             log.info(f"📂 {loaded} пользовательских модулей загружено")
 
     def _load_file(self, file: Path):
-        """Загружает модуль из файла, предварительно проверяя и устанавливая зависимости."""
-        # ──── Читаем содержимое для парсинга зависимостей ────
         content = file.read_text(encoding="utf-8", errors="replace")
-
-        # ──── Проверяем и устанавливаем зависимости ────
         deps_result = check_and_install_requirements(content)
         if deps_result["all"]:
             installed_count = len(deps_result["installed"])
             failed_count = len(deps_result["failed"])
-
             if installed_count:
                 log.info(
                     f"📦 {file.stem}: установлено {installed_count}/{len(deps_result['all'])} зависимостей "
@@ -638,7 +752,6 @@ class ModuleManager:
                 )
                 log.warning(f"⚠️ {file.stem}: модуль будет загружен, но может работать некорректно")
 
-        # ──── Загружаем модуль ────
         spec = importlib.util.spec_from_file_location(file.stem, file)
         py = importlib.util.module_from_spec(spec)
         py.bot = self.bot
@@ -647,23 +760,35 @@ class ModuleManager:
         py.manager = self
         py.module_config = lambda mn, k, d=None: module_config(self.bot, mn, k, d)
         py.module_config_set = lambda mn, k, v: module_config_set(self.bot, mn, k, v)
+        # HTML-утилиты и custom emoji для модулей
+        py.html_escape = html_escape
+        py.html_bold = html_bold
+        py.html_italic = html_italic
+        py.html_code = html_code
+        py.html_pre = html_pre
+        py.html_link = html_link
+        py.html_user_link = html_user_link
+        py.custom_emoji = custom_emoji
+        py.CE = CE
+        py.CEmoji = CEmoji
+        py.safe_edit = safe_edit
+        py.safe_send = safe_send
+        py.safe_send_file = safe_send_file
         spec.loader.exec_module(py)
         if hasattr(py, "setup"):
             py.setup(self.bot)
 
     def install_from_file(self, filename: str, content: bytes) -> Tuple[bool, str]:
-        """Устанавливает модуль из файла. Автоматически ставит зависимости."""
         if not filename.endswith(".py"):
             return False, "Файл должен быть .py"
         mod_name = filename[:-3]
         if mod_name in self._builtin_names:
-            return False, f"`{mod_name}` зарезервировано"
+            return False, f"{mod_name} зарезервировано"
         try:
             text_content = content.decode("utf-8")
         except UnicodeDecodeError:
             return False, "Невалидный UTF-8"
 
-        # ──── Проверяем зависимости ДО записи файла ────
         deps_result = check_and_install_requirements(text_content)
         deps_info = ""
         if deps_result["installed"]:
@@ -691,7 +816,6 @@ class ModuleManager:
         }
         self.bot.config.set("installed_modules", installed)
 
-        # Сохраняем зависимости в объекте модуля
         if mod_name in self.modules:
             self.modules[mod_name].requirements = deps_result["all"]
 
@@ -718,7 +842,6 @@ class ModuleManager:
         except Exception as e:
             return False, str(e)
 
-        # ──── Асинхронная установка зависимостей перед загрузкой ────
         deps_result = await async_check_and_install_requirements(txt)
         deps_info = ""
         if deps_result["installed"]:
@@ -757,10 +880,12 @@ class ModuleManager:
                     deleted = True
             del inst[name]
             self.bot.config.set("installed_modules", inst)
-        return True, f"`{name}` удалён" if deleted else f"`{name}` выгружен"
+        return True, f"{name} удалён" if deleted else f"{name} выгружен"
 
 
 # ──────────────────────── Inline-панель ──────────────────────
+# Inline-бот НЕ поддерживает custom emoji (ограничение Telegram).
+# Вся панель использует Markdown и обычные unicode-эмодзи.
 
 
 class InlinePanel:
@@ -948,7 +1073,7 @@ class InlinePanel:
         btns.append([Button.inline("🔙 Назад", b"p:main")])
         return btns
 
-    # ─── callbacks ───
+    # ─── callbacks (Markdown, без custom emoji) ───
 
     async def _on_callback(self, event):
         if not await self._is_owner(event.sender_id):
@@ -1064,7 +1189,7 @@ class InlinePanel:
             elif data == "ki:template":
                 self._states[event.sender_id] = {"w": "kinfo_template"}
                 await event.edit(
-                    "📝 **Шаблон**\nПеременные: {emoji} {brand} {version} {owner} {ping} {uptime}\n"
+                    "📝 **Шаблон** (HTML)\nПеременные: {emoji} {brand} {version} {owner} {ping} {uptime}\n"
                     "{modules} {builtin} {user_mods} {commands} {prefix} {python} {telethon} {os} {custom_lines}",
                     buttons=[
                         [Button.inline("🔄 Сбросить", b"ki:resettemplate")],
@@ -1073,7 +1198,7 @@ class InlinePanel:
                 )
             elif data == "ki:resettemplate":
                 ki = dict(self.bot.config.data.get("kinfo", {}))
-                ki["template"] = DEFAULT_KINFO_TEMPLATE
+                ki["template"] = get_default_kinfo_template()
                 self.bot.config.data["kinfo"] = ki
                 self.bot.config.save()
                 await event.answer("✅ Сброшен", alert=True)
@@ -1095,11 +1220,18 @@ class InlinePanel:
                 if ki.get("photo"):
                     await event.answer("Превью отправлено", alert=True)
                     try:
-                        await self.inline_bot.send_file(event.sender_id, ki["photo"], caption=text, parse_mode="md")
+                        # Для inline-бота убираем custom emoji из caption
+                        clean_text = _strip_custom_emoji(text)
+                        await self.inline_bot.send_file(event.sender_id, ki["photo"], caption=clean_text, parse_mode="html")
                     except Exception:
-                        await self.inline_bot.send_message(event.sender_id, text, parse_mode="md")
+                        try:
+                            await self.inline_bot.send_message(event.sender_id, _strip_custom_emoji(text), parse_mode="html")
+                        except Exception:
+                            await self.inline_bot.send_message(event.sender_id, re.sub(r'<[^>]+>', '', text))
                 else:
-                    await event.edit(text, buttons=[[Button.inline("🔙", b"p:kinfo")]])
+                    # Для inline — без custom emoji
+                    clean_text = _strip_custom_emoji(text)
+                    await event.edit(clean_text, buttons=[[Button.inline("🔙", b"p:kinfo")]], parse_mode="html")
             elif data.startswith("kit:"):
                 key = data[4:]
                 ki = dict(self.bot.config.data.get("kinfo", {}))
@@ -1127,7 +1259,6 @@ class InlinePanel:
                         k = f"{name}.{s['key']}"
                         v = custom.get(k, s.get("default", "—"))
                         sp += f"  `{s['key']}` = `{v}`\n"
-                # Показываем зависимости
                 deps_text = ""
                 inst = self.bot.config.get("installed_modules", {})
                 info = inst.get(name, {})
@@ -1276,7 +1407,6 @@ class InlinePanel:
                 self.bot.config.data["custom_settings"] = custom
                 self.bot.config.save()
 
-                # Верификация
                 saved = self.bot.config.data.get("custom_settings", {}).get(full_key)
                 if saved == txt:
                     await event.reply(f"✅ `{mn}.{key}` = `{txt}`")
@@ -1344,7 +1474,7 @@ def load_core_module(bot: "Userbot"):
     async def cmd_alive(event):
         up = format_uptime(time.time() - bot.start_time)
         me = await bot.client.get_me()
-        t = bot.config.alive_message
+        t = bot.config.alive_message or get_default_alive_msg()
         try:
             t = t.format(
                 uptime=up, modules=len(bot.module_manager.modules),
@@ -1355,7 +1485,7 @@ def load_core_module(bot: "Userbot"):
             )
         except (KeyError, IndexError):
             pass
-        await event.edit(t)
+        await safe_edit(event, t)
 
     async def cmd_kinfo(event):
         start = time.time()
@@ -1365,36 +1495,36 @@ def load_core_module(bot: "Userbot"):
         if photo:
             await event.delete()
             try:
-                await bot.client.send_file(event.chat_id, photo, caption=text, parse_mode="md")
+                await safe_send_file(bot.client, event.chat_id, photo, caption=text)
             except Exception:
-                await bot.client.send_message(event.chat_id, text)
+                await safe_send(bot.client, event.chat_id, text)
         else:
-            await event.edit(text)
+            await safe_edit(event, text)
 
     async def cmd_kset(event):
         args = event.raw_text.split(maxsplit=2)
         if len(args) < 2:
             ki = bot.config.data.get("kinfo", {})
-            await event.edit(
-                f"🎨 **kinfo настройки**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"`{p}kset emoji <эмодзи>`\n"
-                f"`{p}kset photo` (ответ на фото)\n"
-                f"`{p}kset photo <url/remove>`\n"
-                f"`{p}kset addline <текст>`\n"
-                f"`{p}kset clearlines`\n"
-                f"`{p}kset reset`"
+            await safe_edit(event,
+                f"{CE.PAINT} <b>kinfo настройки</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"<code>{p}kset emoji &lt;эмодзи&gt;</code>\n"
+                f"<code>{p}kset photo</code> (ответ на фото)\n"
+                f"<code>{p}kset photo &lt;url/remove&gt;</code>\n"
+                f"<code>{p}kset addline &lt;текст&gt;</code>\n"
+                f"<code>{p}kset clearlines</code>\n"
+                f"<code>{p}kset reset</code>"
             )
             return
         sub = args[1].lower()
         ki = dict(bot.config.data.get("kinfo", {}))
         if sub == "emoji":
             if len(args) < 3:
-                await event.edit(f"❌ `{p}kset emoji <эмодзи>`")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}kset emoji &lt;эмодзи&gt;</code>")
                 return
             ki["emoji"] = args[2][:5]
             bot.config.data["kinfo"] = ki
             bot.config.save()
-            await event.edit(f"✅ {args[2][:5]}")
+            await safe_edit(event, f"{CE.CHECK} {args[2][:5]}")
         elif sub == "photo":
             if event.is_reply:
                 reply = await event.get_reply_message()
@@ -1404,7 +1534,7 @@ def load_core_module(bot: "Userbot"):
                     ki["photo"] = path
                     bot.config.data["kinfo"] = ki
                     bot.config.save()
-                    await event.edit("✅ Фото!")
+                    await safe_edit(event, f"{CE.CHECK} Фото!")
                     return
             if len(args) >= 3:
                 val = args[2].strip()
@@ -1412,37 +1542,38 @@ def load_core_module(bot: "Userbot"):
                     ki["photo"] = ""
                     bot.config.data["kinfo"] = ki
                     bot.config.save()
-                    await event.edit("✅ Удалено")
+                    await safe_edit(event, f"{CE.CHECK} Удалено")
                 elif val.startswith(("http://", "https://")):
                     ki["photo"] = val
                     bot.config.data["kinfo"] = ki
                     bot.config.save()
-                    await event.edit("✅ Фото (URL)!")
+                    await safe_edit(event, f"{CE.CHECK} Фото (URL)!")
                 else:
-                    await event.edit("❌ URL или `remove`")
+                    await safe_edit(event, f"{CE.CROSS} URL или <code>remove</code>")
             else:
-                await event.edit(f"❌ Ответьте на фото или `{p}kset photo <url/remove>`")
+                await safe_edit(event, f"{CE.CROSS} Ответьте на фото или <code>{p}kset photo &lt;url/remove&gt;</code>")
         elif sub == "addline":
             if len(args) < 3:
-                await event.edit(f"❌ `{p}kset addline <текст>`")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}kset addline &lt;текст&gt;</code>")
                 return
             lines = list(ki.get("custom_lines", []))
             lines.append(args[2])
             ki["custom_lines"] = lines
             bot.config.data["kinfo"] = ki
             bot.config.save()
-            await event.edit(f"✅ Строка ({len(lines)})")
+            await safe_edit(event, f"{CE.CHECK} Строка ({len(lines)})")
         elif sub == "clearlines":
             ki["custom_lines"] = []
             bot.config.data["kinfo"] = ki
             bot.config.save()
-            await event.edit("✅ Очищено")
+            await safe_edit(event, f"{CE.CHECK} Очищено")
         elif sub == "reset":
             bot.config.data["kinfo"] = dict(Config._defaults["kinfo"])
+            bot.config.data["kinfo"]["template"] = get_default_kinfo_template()
             bot.config.save()
-            await event.edit("✅ Сброшено")
+            await safe_edit(event, f"{CE.CHECK} Сброшено")
         else:
-            await event.edit(f"❌ `{sub}`?")
+            await safe_edit(event, f"{CE.CROSS} <code>{html_escape(sub)}</code>?")
 
     async def cmd_help(event):
         args = event.raw_text.split(maxsplit=1)
@@ -1450,84 +1581,88 @@ def load_core_module(bot: "Userbot"):
             cn = args[1].strip().lower()
             cmd = bot._command_handlers.get(cn)
             if cmd:
-                await event.edit(
-                    f"📖 `{bot.config.prefix}{cmd.name}`\n━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"📝 {cmd.description}\n📦 {cmd.module}\n💡 `{cmd.usage}`"
+                await safe_edit(event,
+                    f"{CE.BOOK} <code>{html_escape(bot.config.prefix + cmd.name)}</code>\n━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📝 {html_escape(cmd.description)}\n{CE.PACKAGE} {html_escape(cmd.module)}\n"
+                    f"{CE.BULB} <code>{html_escape(cmd.usage)}</code>"
                 )
             else:
-                await event.edit(f"❌ `{cn}` не найдена")
+                await safe_edit(event, f"{CE.CROSS} <code>{html_escape(cn)}</code> не найдена")
             return
-        t = f"{BRAND_EMOJI} **{BRAND_NAME}** v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+        t = f"{CE.BRAND} <b>{BRAND_NAME}</b> v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━\n\n"
         for mn, m in bot.module_manager.modules.items():
             if not m.commands:
                 continue
             bi = bot.module_manager.is_builtin(mn)
-            t += f"**{'🔵' if bi else '🟢'} {mn}** — _{m.description}_\n"
+            icon = CE.BLUE if bi else CE.GREEN
+            t += f"<b>{icon} {html_escape(mn)}</b> — <i>{html_escape(m.description)}</i>\n"
             for cn, cmd in m.commands.items():
-                t += f"  ├ `{bot.config.prefix}{cn}` — {cmd.description}\n"
+                t += f"  ├ <code>{html_escape(bot.config.prefix + cn)}</code> — {html_escape(cmd.description)}\n"
             t += "\n"
-        t += f"💡 `{bot.config.prefix}help <cmd>`"
-        await event.edit(truncate(t))
+        t += f"{CE.BULB} <code>{html_escape(bot.config.prefix)}help &lt;cmd&gt;</code>"
+        await safe_edit(event, truncate(t))
 
     async def cmd_ping(event):
         s = time.time()
-        msg = await event.edit(f"{BRAND_EMOJI} ...")
+        await safe_edit(event, f"{CE.BRAND} ...")
         e = (time.time() - s) * 1000
-        await msg.edit(f"🏓 **Понг!** `{e:.1f}ms`\n⏱ {format_uptime(time.time() - bot.start_time)}")
+        await safe_edit(event,
+            f"{CE.PING} <b>Понг!</b> <code>{e:.1f}ms</code>\n{CE.CLOCK} {format_uptime(time.time() - bot.start_time)}"
+        )
 
     async def cmd_prefix(event):
         args = event.raw_text.split(maxsplit=1)
         if len(args) < 2:
-            await event.edit(f"🔧 `{bot.config.prefix}`")
+            await safe_edit(event, f"{CE.WRENCH} <code>{html_escape(bot.config.prefix)}</code>")
             return
         n = args[1].strip()
         if len(n) > 3:
-            await event.edit("❌ Макс 3!")
+            await safe_edit(event, f"{CE.CROSS} Макс 3!")
             return
         bot.config.set("prefix", n)
-        await event.edit(f"✅ Префикс: `{n}`")
+        await safe_edit(event, f"{CE.CHECK} Префикс: <code>{html_escape(n)}</code>")
 
     async def cmd_modules(event):
         mods = bot.module_manager.modules
         um = bot.module_manager.get_user_modules()
-        t = f"📦 **Модули** ({len(mods)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+        t = f"{CE.PACKAGE} <b>Модули</b> ({len(mods)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
         tc = 0
         for n, m in mods.items():
             d = n in bot.config.disabled_modules
             bi = bot.module_manager.is_builtin(n)
-            i = "🔴" if d else ("🔵" if bi else "🟢")
+            i = CE.RED if d else (CE.BLUE if bi else CE.GREEN)
             cc = len(m.commands)
             tc += cc
-            sc = f" ⚙️{len(m.settings_schema)}" if m.settings_schema else ""
-            deps = f" 📦{len(m.requirements)}" if m.requirements else ""
-            t += f"{i} **{n}** `v{m.version}` [{cc}cmd{sc}{deps}]\n"
-        t += f"\n📊 {tc} команд, {len(um)} польз."
-        await event.edit(t)
+            sc = f" {CE.GEAR}{len(m.settings_schema)}" if m.settings_schema else ""
+            deps = f" {CE.PACKAGE}{len(m.requirements)}" if m.requirements else ""
+            t += f"{i} <b>{html_escape(n)}</b> <code>v{m.version}</code> [{cc}cmd{sc}{deps}]\n"
+        t += f"\n{CE.CHART} {tc} команд, {len(um)} польз."
+        await safe_edit(event, t)
 
     async def cmd_reload(event):
-        await event.edit("🔄 ...")
+        await safe_edit(event, f"{CE.RELOAD} ...")
         bi = set(bot.module_manager._builtin_names)
         for n in [x for x in list(bot.module_manager.modules) if x not in bi]:
             bot.module_manager.unload_module(n)
         bot.module_manager.load_from_directory()
-        await event.edit(f"✅ {len(bot.module_manager.modules)} модулей | {len(bot._command_handlers)} команд")
+        await safe_edit(event, f"{CE.CHECK} {len(bot.module_manager.modules)} модулей | {len(bot._command_handlers)} команд")
 
     async def cmd_eval(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
-            await event.edit(f"❌ `{p}eval <expr>`")
+            await safe_edit(event, f"{CE.CROSS} <code>{p}eval &lt;expr&gt;</code>")
             return
         try:
             r = eval(a[1])
             if asyncio.iscoroutine(r): r = await r
-            await event.edit(truncate(f"💻\n```\n{r}\n```"))
+            await safe_edit(event, truncate(f"💻\n<pre>{html_escape(str(r))}</pre>"))
         except Exception as e:
-            await event.edit(f"❌\n```\n{e}\n```")
+            await safe_edit(event, f"{CE.CROSS}\n<pre>{html_escape(str(e))}</pre>")
 
     async def cmd_exec(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
-            await event.edit(f"❌ `{p}exec <code>`")
+            await safe_edit(event, f"{CE.CROSS} <code>{p}exec &lt;code&gt;</code>")
             return
         old = sys.stdout
         sys.stdout = buf = io.StringIO()
@@ -1536,39 +1671,39 @@ def load_core_module(bot: "Userbot"):
             exec(code)
             await locals()["__ae__"](event, bot.client, bot)
             out = buf.getvalue()
-            await event.edit(truncate(f"💻\n```\n{out or '✅'}\n```"))
+            await safe_edit(event, truncate(f"💻\n<pre>{html_escape(out or '✅')}</pre>"))
         except Exception:
-            await event.edit(truncate(f"❌\n```\n{traceback.format_exc()}\n```"))
+            await safe_edit(event, truncate(f"{CE.CROSS}\n<pre>{html_escape(traceback.format_exc())}</pre>"))
         finally:
             sys.stdout = old
 
     async def cmd_settings(event):
         if not bot.inline_panel.active:
-            await event.edit(f"⚠️ `{p}settoken <token>`")
+            await safe_edit(event, f"{CE.WARN} <code>{p}settoken &lt;token&gt;</code>")
             return
         me = await bot.inline_panel.inline_bot.get_me()
-        await event.edit(f"⚙️ `@{me.username} ` в любом чате")
+        await safe_edit(event, f"{CE.GEAR} <code>@{me.username} </code> в любом чате")
 
     async def cmd_settoken(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
             s = "✅" if bot.inline_panel.active else "❌"
-            await event.edit(f"🤖 Inline: {s}\n`{p}settoken <token/remove>`")
+            await safe_edit(event, f"{CE.BOT} Inline: {s}\n<code>{p}settoken &lt;token/remove&gt;</code>")
             return
         tok = a[1].strip()
         if tok.lower() == "remove":
             bot.config.set("bot_token", "")
             await bot.inline_panel.stop()
-            await event.edit("✅ Удалён")
+            await safe_edit(event, f"{CE.CHECK} Удалён")
             return
-        await event.edit("🔄 ...")
+        await safe_edit(event, f"{CE.RELOAD} ...")
         bot.config.set("bot_token", tok)
         if await bot.inline_panel.restart():
             me = await bot.inline_panel.inline_bot.get_me()
-            await event.edit(f"✅ @{me.username}")
+            await safe_edit(event, f"{CE.CHECK} @{me.username}")
         else:
             bot.config.set("bot_token", "")
-            await event.edit("❌ Невалидный токен")
+            await safe_edit(event, f"{CE.CROSS} Невалидный токен")
 
     async def cmd_status(event):
         up = format_uptime(time.time() - bot.start_time)
@@ -1576,23 +1711,24 @@ def load_core_module(bot: "Userbot"):
         st = bot.config.get("stats", {})
         um = len(bot.module_manager.get_user_modules())
         tm = len(bot.module_manager.modules)
-        await event.edit(
-            f"📊 **{BRAND_NAME}** v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"👤 {me.first_name} `{me.id}`\n⏱ **{up}**\n"
-            f"📦 {tm} (🔵{tm - um} 🟢{um})\n🔧 {len(bot._command_handlers)}\n"
-            f"📈 {st.get('commands_used', 0)} выполнено\n"
-            f"🔑 `{bot.config.prefix}` | 🐍 `{platform.python_version()}`\n"
-            f"📡 `{telethon_version.__version__}` | 💻 {platform.system()}\n"
-            f"🤖 Inline: {'✅' if bot.inline_panel.active else '❌'}"
+        await safe_edit(event,
+            f"{CE.CHART} <b>{BRAND_NAME}</b> v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{CE.USER} {html_escape(me.first_name)} <code>{me.id}</code>\n{CE.CLOCK} <b>{up}</b>\n"
+            f"{CE.PACKAGE} {tm} ({CE.BLUE}{tm - um} {CE.GREEN}{um})\n{CE.WRENCH} {len(bot._command_handlers)}\n"
+            f"{CE.STATS} {st.get('commands_used', 0)} выполнено\n"
+            f"{CE.KEY} <code>{html_escape(bot.config.prefix)}</code> | {CE.PYTHON} <code>{platform.python_version()}</code>\n"
+            f"{CE.SIGNAL} <code>{telethon_version.__version__}</code> | {CE.PC} {platform.system()}\n"
+            f"{CE.BOT} Inline: {'✅' if bot.inline_panel.active else '❌'}"
         )
 
     async def cmd_im(event):
         if not event.is_reply:
-            await event.edit(f"📥 Ответьте на `.py` файл: `{p}im`\nИли: `{p}dlm <url>`")
+            await safe_edit(event,
+                f"{CE.DOWNLOAD} Ответьте на <code>.py</code> файл: <code>{p}im</code>\nИли: <code>{p}dlm &lt;url&gt;</code>")
             return
         reply = await event.get_reply_message()
         if not reply.document:
-            await event.edit("❌ Нет файла")
+            await safe_edit(event, f"{CE.CROSS} Нет файла")
             return
         fn = None
         for attr in reply.document.attributes:
@@ -1601,73 +1737,71 @@ def load_core_module(bot: "Userbot"):
         if not fn:
             fn = f"mod_{int(time.time())}.py"
         if not fn.endswith(".py"):
-            await event.edit("❌ Только .py")
+            await safe_edit(event, f"{CE.CROSS} Только .py")
             return
-        await event.edit(f"📥 `{fn}`...")
+        await safe_edit(event, f"{CE.DOWNLOAD} <code>{html_escape(fn)}</code>...")
         try:
             content = await bot.client.download_media(reply, bytes)
         except Exception as e:
-            await event.edit(f"❌ {e}")
+            await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
             return
 
-        # Предварительно показываем зависимости
         text_content = content.decode("utf-8", errors="replace")
         reqs = parse_module_requirements(text_content)
         if reqs:
             missing = [r for r in reqs if not is_package_installed(r)]
             if missing:
-                await event.edit(
-                    f"📥 `{fn}`\n📦 Установка зависимостей: `{', '.join(missing)}`..."
+                await safe_edit(event,
+                    f"{CE.DOWNLOAD} <code>{html_escape(fn)}</code>\n{CE.PACKAGE} Установка зависимостей: <code>{', '.join(missing)}</code>..."
                 )
 
         ok, res = bot.module_manager.install_from_file(fn, content)
         if ok:
-            # res может содержать имя модуля + инфо о зависимостях
             mod_name = res.split("\n")[0]
             m = bot.module_manager.modules.get(mod_name)
             cc = len(m.commands) if m else 0
             cl = ""
             if m and m.commands:
-                cl = "\n\n**Команды:**\n" + "".join(
-                    f"  `{p}{c}` — {cmd.description}\n" for c, cmd in m.commands.items()
+                cl = "\n\n<b>Команды:</b>\n" + "".join(
+                    f"  <code>{html_escape(p + c)}</code> — {html_escape(cmd.description)}\n" for c, cmd in m.commands.items()
                 )
             sc = ""
             if m and m.settings_schema:
-                sc = f"\n⚙️ {len(m.settings_schema)} настроек"
+                sc = f"\n{CE.GEAR} {len(m.settings_schema)} настроек"
             deps_lines = "\n".join(res.split("\n")[1:]) if "\n" in res else ""
-            await event.edit(f"✅ **{mod_name}** | 🔧 {cc} cmd{cl}{sc}\n{deps_lines}")
+            await safe_edit(event, f"{CE.CHECK} <b>{html_escape(mod_name)}</b> | {CE.WRENCH} {cc} cmd{cl}{sc}\n{deps_lines}")
         else:
-            await event.edit(f"❌ {res}")
+            await safe_edit(event, f"{CE.CROSS} {html_escape(res)}")
 
     async def cmd_um(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
             um = bot.module_manager.get_user_modules()
             if not um:
-                await event.edit("📭 Нет польз. модулей")
+                await safe_edit(event, f"{CE.EMPTY} Нет польз. модулей")
                 return
-            t = f"🗑 `{p}um <имя>`\n\n"
+            t = f"{CE.TRASH} <code>{p}um &lt;имя&gt;</code>\n\n"
             for n, m in um.items():
-                t += f"  🟢 `{n}` — {m.description}\n"
-            await event.edit(t)
+                t += f"  {CE.GREEN} <code>{html_escape(n)}</code> — {html_escape(m.description)}\n"
+            await safe_edit(event, t)
             return
         mn = a[1].strip().lower()
         if bot.module_manager.is_builtin(mn):
-            await event.edit("❌ Встроенный!")
+            await safe_edit(event, f"{CE.CROSS} Встроенный!")
             return
         ok, msg = bot.module_manager.uninstall_module(mn)
-        await event.edit(f"{'✅' if ok else '❌'} {msg}")
+        await safe_edit(event, f"{CE.CHECK if ok else CE.CROSS} {html_escape(msg)}")
 
     async def cmd_dlm(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
-            await event.edit(f"🌐 `{p}dlm <url>`\nGitHub, Gist, прямые .py ссылки")
+            await safe_edit(event, f"{CE.GLOBE} <code>{p}dlm &lt;url&gt;</code>\nGitHub, Gist, прямые .py ссылки")
             return
         url = a[1].strip()
         if not url.startswith(("http://", "https://")):
-            await event.edit("❌ http(s)://")
+            await safe_edit(event, f"{CE.CROSS} http(s)://")
             return
-        await event.edit("🌐 Скачиваю...")
+        await safe_edit(event, f"{CE.GLOBE} Скачиваю...")
         ok, res = await bot.module_manager.install_from_url(url)
         if ok:
             mod_name = res.split("\n")[0]
@@ -1675,50 +1809,49 @@ def load_core_module(bot: "Userbot"):
             cc = len(m.commands) if m else 0
             cl = ""
             if m and m.commands:
-                cl = "\n\n**Команды:**\n" + "".join(
-                    f"  `{p}{c}` — {cmd.description}\n" for c, cmd in m.commands.items()
+                cl = "\n\n<b>Команды:</b>\n" + "".join(
+                    f"  <code>{html_escape(p + c)}</code> — {html_escape(cmd.description)}\n" for c, cmd in m.commands.items()
                 )
             deps_lines = "\n".join(res.split("\n")[1:]) if "\n" in res else ""
-            await event.edit(f"✅ **{mod_name}** | 🔧 {cc} cmd{cl}\n{deps_lines}")
+            await safe_edit(event, f"{CE.CHECK} <b>{html_escape(mod_name)}</b> | {CE.WRENCH} {cc} cmd{cl}\n{deps_lines}")
         else:
-            await event.edit(f"❌ {res}")
+            await safe_edit(event, f"{CE.CROSS} {html_escape(res)}")
 
     async def cmd_lm(event):
         um = bot.module_manager.get_user_modules()
         inst = bot.config.get("installed_modules", {})
-        t = f"🔌 **Пользовательские** ({len(um)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+        t = f"{CE.PLUG} <b>Пользовательские</b> ({len(um)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
         if not um:
-            t += f"📭 `{p}im` | `{p}dlm <url>`\n"
+            t += f"{CE.EMPTY} <code>{p}im</code> | <code>{p}dlm &lt;url&gt;</code>\n"
         else:
             tc = 0
             for n, m in um.items():
                 info = inst.get(n, {})
-                src = {"file": "📎", "url": "🌐"}.get(info.get("source", ""), "❓")
+                src = {"file": CE.FILE, "url": CE.GLOBE}.get(info.get("source", ""), "❓")
                 cc = len(m.commands)
                 tc += cc
-                sc = f" ⚙️{len(m.settings_schema)}" if m.settings_schema else ""
+                sc = f" {CE.GEAR}{len(m.settings_schema)}" if m.settings_schema else ""
                 reqs = info.get("requirements", [])
-                deps = f" 📦{len(reqs)}" if reqs else ""
-                t += f"🟢 **{n}** `v{m.version}` {src} [{cc}cmd{sc}{deps}]\n"
+                deps = f" {CE.PACKAGE}{len(reqs)}" if reqs else ""
+                t += f"{CE.GREEN} <b>{html_escape(n)}</b> <code>v{m.version}</code> {src} [{cc}cmd{sc}{deps}]\n"
                 for cn in m.commands:
-                    t += f"   └ `{p}{cn}`\n"
+                    t += f"   └ <code>{html_escape(p + cn)}</code>\n"
                 if reqs:
-                    t += f"   📦 `{', '.join(reqs)}`\n"
-            t += f"\n📊 {len(um)} модулей, {tc} команд"
-        await event.edit(truncate(t))
+                    t += f"   {CE.PACKAGE} <code>{', '.join(reqs)}</code>\n"
+            t += f"\n{CE.CHART} {len(um)} модулей, {tc} команд"
+        await safe_edit(event, truncate(t))
 
     async def cmd_pip(event):
-        """Управление pip-пакетами: install, uninstall, check, list, deps."""
         a = event.raw_text.split(maxsplit=2)
         if len(a) < 2:
-            await event.edit(
-                f"📦 **Управление пакетами**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"`{p}pip install <pkg>` — установить\n"
-                f"`{p}pip uninstall <pkg>` — удалить\n"
-                f"`{p}pip check <pkg>` — проверить\n"
-                f"`{p}pip search <pkg>` — версия пакета\n"
-                f"`{p}pip list` — установленные (pip list)\n"
-                f"`{p}pip deps <модуль>` — зависимости модуля\n"
+            await safe_edit(event,
+                f"{CE.PACKAGE} <b>Управление пакетами</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"<code>{p}pip install &lt;pkg&gt;</code> — установить\n"
+                f"<code>{p}pip uninstall &lt;pkg&gt;</code> — удалить\n"
+                f"<code>{p}pip check &lt;pkg&gt;</code> — проверить\n"
+                f"<code>{p}pip search &lt;pkg&gt;</code> — версия пакета\n"
+                f"<code>{p}pip list</code> — установленные (pip list)\n"
+                f"<code>{p}pip deps &lt;модуль&gt;</code> — зависимости модуля\n"
             )
             return
 
@@ -1726,34 +1859,34 @@ def load_core_module(bot: "Userbot"):
 
         if sub == "install":
             if len(a) < 3:
-                await event.edit(f"❌ `{p}pip install <pkg>`")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}pip install &lt;pkg&gt;</code>")
                 return
             pkg = a[2].strip()
             if is_package_installed(pkg):
-                await event.edit(f"✅ `{pkg}` уже установлен")
+                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(pkg)}</code> уже установлен")
                 return
-            await event.edit(f"📥 Устанавливаю `{pkg}`...")
+            await safe_edit(event, f"{CE.DOWNLOAD} Устанавливаю <code>{html_escape(pkg)}</code>...")
             ok, msg = await async_install_pip_package(pkg)
             if ok:
-                await event.edit(f"✅ `{pkg}` установлен!")
+                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(pkg)}</code> установлен!")
             else:
-                await event.edit(f"❌ {msg}")
+                await safe_edit(event, f"{CE.CROSS} {html_escape(msg)}")
 
         elif sub == "uninstall":
             if len(a) < 3:
-                await event.edit(f"❌ `{p}pip uninstall <pkg>`")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}pip uninstall &lt;pkg&gt;</code>")
                 return
             pkg = a[2].strip()
-            await event.edit(f"🗑 Удаляю `{pkg}`...")
+            await safe_edit(event, f"{CE.TRASH} Удаляю <code>{html_escape(pkg)}</code>...")
             ok, msg = uninstall_pip_package(pkg)
             if ok:
-                await event.edit(f"✅ `{pkg}` удалён")
+                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(pkg)}</code> удалён")
             else:
-                await event.edit(f"❌ {msg}")
+                await safe_edit(event, f"{CE.CROSS} {html_escape(msg)}")
 
         elif sub == "check":
             if len(a) < 3:
-                await event.edit(f"❌ `{p}pip check <pkg>`")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}pip check &lt;pkg&gt;</code>")
                 return
             pkg = a[2].strip()
             installed = is_package_installed(pkg)
@@ -1763,14 +1896,14 @@ def load_core_module(bot: "Userbot"):
                 try:
                     from importlib.metadata import version as get_version
                     base = re.split(r'[><=!~]', pkg)[0].strip()
-                    ver = f" `v{get_version(base)}`"
+                    ver = f" <code>v{get_version(base)}</code>"
                 except Exception:
                     pass
-            await event.edit(f"📦 `{pkg}`: {status}{ver}")
+            await safe_edit(event, f"{CE.PACKAGE} <code>{html_escape(pkg)}</code>: {status}{ver}")
 
         elif sub == "search":
             if len(a) < 3:
-                await event.edit(f"❌ `{p}pip search <pkg>`")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}pip search &lt;pkg&gt;</code>")
                 return
             pkg = a[2].strip()
             try:
@@ -1780,21 +1913,19 @@ def load_core_module(bot: "Userbot"):
                 meta = metadata(base)
                 summary = meta.get("Summary", "—")
                 author = meta.get("Author", "—")
-                await event.edit(
-                    f"📦 **{base}** `v{ver}`\n"
-                    f"📝 {summary}\n"
-                    f"👤 {author}"
+                await safe_edit(event,
+                    f"{CE.PACKAGE} <b>{html_escape(base)}</b> <code>v{ver}</code>\n"
+                    f"📝 {html_escape(summary)}\n{CE.USER} {html_escape(author)}"
                 )
             except Exception:
-                await event.edit(f"❌ `{pkg}` не найден или не установлен")
+                await safe_edit(event, f"{CE.CROSS} <code>{html_escape(pkg)}</code> не найден или не установлен")
 
         elif sub == "list":
-            await event.edit("📋 Загрузка...")
+            await safe_edit(event, f"{CE.PACKAGE} Загрузка...")
             try:
                 proc = await asyncio.create_subprocess_exec(
                     sys.executable, "-m", "pip", "list", "--format=columns",
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
                 )
                 stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=30)
                 output = stdout.decode().strip()
@@ -1802,13 +1933,13 @@ def load_core_module(bot: "Userbot"):
                 count = max(0, len(lines) - 2)
                 if len(output) > 3500:
                     output = "\n".join(lines[:50]) + f"\n\n... и ещё {count - 48} пакетов"
-                await event.edit(f"📋 **Пакеты** ({count}):\n```\n{output}\n```")
+                await safe_edit(event, f"{CE.PACKAGE} <b>Пакеты</b> ({count}):\n<pre>{html_escape(output)}</pre>")
             except Exception as e:
-                await event.edit(f"❌ {e}")
+                await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
         elif sub == "deps":
             if len(a) < 3:
-                await event.edit(f"❌ `{p}pip deps <модуль>`")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}pip deps &lt;модуль&gt;</code>")
                 return
             mod_name = a[2].strip().lower()
             mod_obj = bot.module_manager.modules.get(mod_name)
@@ -1817,18 +1948,15 @@ def load_core_module(bot: "Userbot"):
             reqs = info.get("requirements", [])
             if mod_obj and mod_obj.requirements:
                 reqs = mod_obj.requirements
-
             if not reqs:
                 fp = Path(MODULES_DIR) / f"{mod_name}.py"
                 if fp.exists():
                     content = fp.read_text(encoding="utf-8", errors="replace")
                     reqs = parse_module_requirements(content)
-
             if not reqs:
-                await event.edit(f"📦 `{mod_name}`: зависимостей нет")
+                await safe_edit(event, f"{CE.PACKAGE} <code>{html_escape(mod_name)}</code>: зависимостей нет")
                 return
-
-            t = f"📦 **{mod_name}** — зависимости:\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+            t = f"{CE.PACKAGE} <b>{html_escape(mod_name)}</b> — зависимости:\n━━━━━━━━━━━━━━━━━━━━━\n\n"
             for r in reqs:
                 installed = is_package_installed(r)
                 icon = "✅" if installed else "❌"
@@ -1837,58 +1965,51 @@ def load_core_module(bot: "Userbot"):
                     try:
                         from importlib.metadata import version as get_version
                         base = re.split(r'[><=!~]', r)[0].strip()
-                        ver = f" `v{get_version(base)}`"
+                        ver = f" <code>v{get_version(base)}</code>"
                     except Exception:
                         pass
-                t += f"  {icon} `{r}`{ver}\n"
-            await event.edit(t)
+                t += f"  {icon} <code>{html_escape(r)}</code>{ver}\n"
+            await safe_edit(event, t)
 
         else:
-            await event.edit(f"❌ Неизвестная подкоманда: `{sub}`")
+            await safe_edit(event, f"{CE.CROSS} Неизвестная подкоманда: <code>{html_escape(sub)}</code>")
 
     async def cmd_fcfg(event):
-        """Управление настройками модулей: set, remove, reset."""
         args = event.raw_text.split()
-        # args[0] = ".fcfg"
-
         if len(args) < 2:
-            # Показать справку
             t = (
-                f"⚙️ **Управление настройками модулей**\n"
+                f"{CE.GEAR} <b>Управление настройками модулей</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"`{p}fcfg set -m <модуль> <параметр> <значение>` — установить\n"
-                f"`{p}fcfg remove -m <модуль> <параметр>` — удалить\n"
-                f"`{p}fcfg reset -m <модуль>` — сбросить все настройки модуля\n\n"
-                f"**Пример:**\n"
-                f"`{p}fcfg set -m mymod greeting Привет!`\n"
-                f"`{p}fcfg remove -m mymod greeting`\n"
-                f"`{p}fcfg reset -m mymod`\n"
+                f"<code>{p}fcfg set -m &lt;модуль&gt; &lt;параметр&gt; &lt;значение&gt;</code> — установить\n"
+                f"<code>{p}fcfg remove -m &lt;модуль&gt; &lt;параметр&gt;</code> — удалить\n"
+                f"<code>{p}fcfg reset -m &lt;модуль&gt;</code> — сбросить все настройки модуля\n\n"
+                f"<b>Пример:</b>\n"
+                f"<code>{p}fcfg set -m mymod greeting Привет!</code>\n"
+                f"<code>{p}fcfg remove -m mymod greeting</code>\n"
+                f"<code>{p}fcfg reset -m mymod</code>\n"
             )
-            await event.edit(t)
+            await safe_edit(event, t)
             return
 
         action = args[1].lower()
 
         if action not in ("set", "remove", "reset"):
-            await event.edit(f"❌ Неизвестный аргумент: `{action}`\nДопустимо: `set`, `remove`, `reset`")
+            await safe_edit(event, f"{CE.CROSS} Неизвестный аргумент: <code>{html_escape(action)}</code>\nДопустимо: <code>set</code>, <code>remove</code>, <code>reset</code>")
             return
 
-        # Ищем флаг -m
         if "-m" not in args:
-            await event.edit(f"❌ Укажите модуль: `-m <название_модуля>`")
+            await safe_edit(event, f"{CE.CROSS} Укажите модуль: <code>-m &lt;название_модуля&gt;</code>")
             return
 
         m_index = args.index("-m")
         if m_index + 1 >= len(args):
-            await event.edit(f"❌ После `-m` укажите название модуля")
+            await safe_edit(event, f"{CE.CROSS} После <code>-m</code> укажите название модуля")
             return
 
         mod_name = args[m_index + 1]
 
-        # Проверяем существование модуля
         mod_obj = bot.module_manager.modules.get(mod_name)
         if not mod_obj:
-            # Попробуем найти без учёта регистра
             for mn in bot.module_manager.modules:
                 if mn.lower() == mod_name.lower():
                     mod_name = mn
@@ -1896,45 +2017,39 @@ def load_core_module(bot: "Userbot"):
                     break
 
         if not mod_obj:
-            available = ", ".join(f"`{n}`" for n in bot.module_manager.modules)
-            await event.edit(f"❌ Модуль `{mod_name}` не найден\n\n📦 Доступные: {available}")
+            available = ", ".join(f"<code>{html_escape(n)}</code>" for n in bot.module_manager.modules)
+            await safe_edit(event, f"{CE.CROSS} Модуль <code>{html_escape(mod_name)}</code> не найден\n\n{CE.PACKAGE} Доступные: {available}")
             return
 
-        # Оставшиеся аргументы после модуля
         remaining = args[m_index + 2:]
 
         if action == "set":
             if len(remaining) < 2:
-                # Показать доступные настройки модуля
                 if mod_obj.settings_schema:
-                    t = f"⚙️ **Настройки `{mod_name}`:**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    t = f"{CE.GEAR} <b>Настройки <code>{html_escape(mod_name)}</code>:</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
                     custom = bot.config.data.get("custom_settings", {})
                     for s in mod_obj.settings_schema:
                         fk = f"{mod_name}.{s['key']}"
                         cur = custom.get(fk, s.get("default", "—"))
                         stype = s.get("type", "str")
                         desc = s.get("description", "")
-                        t += f"  `{s['key']}` = `{cur}` ({stype})\n"
+                        t += f"  <code>{html_escape(s['key'])}</code> = <code>{html_escape(str(cur))}</code> ({stype})\n"
                         if s.get("label"):
-                            t += f"    📝 {s['label']}\n"
+                            t += f"    📝 {html_escape(s['label'])}\n"
                         if desc:
-                            t += f"    ℹ️ _{desc}_\n"
-                    t += f"\n💡 `{p}fcfg set -m {mod_name} <параметр> <значение>`"
-                    await event.edit(t)
+                            t += f"    ℹ️ <i>{html_escape(desc)}</i>\n"
+                    t += f"\n{CE.BULB} <code>{p}fcfg set -m {html_escape(mod_name)} &lt;параметр&gt; &lt;значение&gt;</code>"
+                    await safe_edit(event, t)
                 else:
-                    await event.edit(
-                        f"❌ `{p}fcfg set -m {mod_name} <параметр> <значение>`\n\n"
-                        f"⚠️ У модуля `{mod_name}` нет объявленных настроек (settings_schema),\n"
+                    await safe_edit(event,
+                        f"{CE.CROSS} <code>{p}fcfg set -m {html_escape(mod_name)} &lt;параметр&gt; &lt;значение&gt;</code>\n\n"
+                        f"{CE.WARN} У модуля <code>{html_escape(mod_name)}</code> нет объявленных настроек (settings_schema),\n"
                         f"но вы всё равно можете задать произвольный параметр."
                     )
                 return
 
             param = remaining[0]
-            # Значение — всё остальное (чтобы поддержать пробелы в значении)
-            # Нужно извлечь значение из оригинального текста, чтобы сохранить пробелы
-            # Находим позицию параметра в оригинальном тексте и берём всё после него
             raw = event.raw_text
-            # Ищем позицию param после -m mod_name
             param_pos = raw.find(param, raw.find(mod_name) + len(mod_name))
             if param_pos != -1:
                 value = raw[param_pos + len(param):].strip()
@@ -1942,10 +2057,9 @@ def load_core_module(bot: "Userbot"):
                 value = " ".join(remaining[1:])
 
             if not value:
-                await event.edit(f"❌ Укажите значение: `{p}fcfg set -m {mod_name} {param} <значение>`")
+                await safe_edit(event, f"{CE.CROSS} Укажите значение: <code>{p}fcfg set -m {html_escape(mod_name)} {html_escape(param)} &lt;значение&gt;</code>")
                 return
 
-            # Валидация по schema если есть
             schema_entry = None
             if mod_obj.settings_schema:
                 for s in mod_obj.settings_schema:
@@ -1953,41 +2067,39 @@ def load_core_module(bot: "Userbot"):
                         schema_entry = s
                         break
 
-            # Приведение типа если есть schema
             if schema_entry:
                 stype = schema_entry.get("type", "str")
                 try:
                     if stype == "int":
-                        int(value)  # проверка
+                        int(value)
                     elif stype == "float":
                         float(value)
                     elif stype == "bool":
                         if value.lower() not in ("true", "false", "1", "0", "yes", "no", "да", "нет", "on", "off"):
-                            await event.edit(
-                                f"❌ Параметр `{param}` имеет тип `bool`\n"
-                                f"Допустимые значения: `true/false`, `1/0`, `yes/no`, `on/off`"
+                            await safe_edit(event,
+                                f"{CE.CROSS} Параметр <code>{html_escape(param)}</code> имеет тип <code>bool</code>\n"
+                                f"Допустимые значения: <code>true/false</code>, <code>1/0</code>, <code>yes/no</code>, <code>on/off</code>"
                             )
                             return
                 except ValueError:
-                    await event.edit(f"❌ Параметр `{param}` должен быть типа `{stype}`, получено: `{value}`")
+                    await safe_edit(event, f"{CE.CROSS} Параметр <code>{html_escape(param)}</code> должен быть типа <code>{stype}</code>, получено: <code>{html_escape(value)}</code>")
                     return
 
             module_config_set(bot, mod_name, param, value)
 
-            # Верификация
             saved = bot.config.data.get("custom_settings", {}).get(f"{mod_name}.{param}")
             label = ""
             if schema_entry and schema_entry.get("label"):
-                label = f" ({schema_entry['label']})"
+                label = f" ({html_escape(schema_entry['label'])})"
 
             if saved == value:
-                await event.edit(f"✅ `{mod_name}.{param}`{label} = `{value}`")
+                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(mod_name)}.{html_escape(param)}</code>{label} = <code>{html_escape(value)}</code>")
             else:
-                await event.edit(f"⚠️ Ошибка сохранения `{mod_name}.{param}`")
+                await safe_edit(event, f"{CE.WARN} Ошибка сохранения <code>{html_escape(mod_name)}.{html_escape(param)}</code>")
 
         elif action == "remove":
             if len(remaining) < 1:
-                await event.edit(f"❌ `{p}fcfg remove -m {mod_name} <параметр>`")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}fcfg remove -m {html_escape(mod_name)} &lt;параметр&gt;</code>")
                 return
 
             param = remaining[0]
@@ -1995,14 +2107,13 @@ def load_core_module(bot: "Userbot"):
             custom = dict(bot.config.data.get("custom_settings", {}))
 
             if full_key not in custom:
-                await event.edit(f"❌ Параметр `{mod_name}.{param}` не установлен в custom_settings")
+                await safe_edit(event, f"{CE.CROSS} Параметр <code>{html_escape(full_key)}</code> не установлен в custom_settings")
                 return
 
             del custom[full_key]
             bot.config.data["custom_settings"] = custom
             bot.config.save()
 
-            # Покажем значение по умолчанию если есть
             default_val = None
             if mod_obj.settings_schema:
                 for s in mod_obj.settings_schema:
@@ -2010,10 +2121,10 @@ def load_core_module(bot: "Userbot"):
                         default_val = s.get("default")
                         break
 
-            msg = f"✅ Параметр `{mod_name}.{param}` удалён из настроек"
+            msg = f"{CE.CHECK} Параметр <code>{html_escape(full_key)}</code> удалён из настроек"
             if default_val is not None:
-                msg += f"\n📎 Значение по умолчанию: `{default_val}`"
-            await event.edit(msg)
+                msg += f"\n{CE.FILE} Значение по умолчанию: <code>{html_escape(str(default_val))}</code>"
+            await safe_edit(event, msg)
 
         elif action == "reset":
             custom = dict(bot.config.data.get("custom_settings", {}))
@@ -2021,7 +2132,7 @@ def load_core_module(bot: "Userbot"):
             keys_to_remove = [k for k in custom if k.startswith(prefix_key)]
 
             if not keys_to_remove:
-                await event.edit(f"ℹ️ У модуля `{mod_name}` нет пользовательских настроек для сброса")
+                await safe_edit(event, f"ℹ️ У модуля <code>{html_escape(mod_name)}</code> нет пользовательских настроек для сброса")
                 return
 
             for k in keys_to_remove:
@@ -2030,9 +2141,9 @@ def load_core_module(bot: "Userbot"):
             bot.config.data["custom_settings"] = custom
             bot.config.save()
 
-            await event.edit(
-                f"✅ Сброшено **{len(keys_to_remove)}** настроек модуля `{mod_name}`:\n"
-                + "\n".join(f"  🗑 `{k}`" for k in keys_to_remove)
+            await safe_edit(event,
+                f"{CE.CHECK} Сброшено <b>{len(keys_to_remove)}</b> настроек модуля <code>{html_escape(mod_name)}</code>:\n"
+                + "\n".join(f"  {CE.TRASH} <code>{html_escape(k)}</code>" for k in keys_to_remove)
             )
 
     mod.commands = {
@@ -2067,18 +2178,19 @@ def load_tools_module(bot: "Userbot"):
     p = bot.config.prefix
 
     async def cmd_id(event):
-        t = f"🆔\n━━━━━━━━━━━━━━━━━━━━━\n💬 `{event.chat_id}`\n"
+        t = f"{CE.ID}\n━━━━━━━━━━━━━━━━━━━━━\n{CE.CHAT} <code>{event.chat_id}</code>\n"
         if event.is_reply:
             r = await event.get_reply_message()
             u = await r.get_sender()
-            t += f"👤 `{r.sender_id}`\n"
+            t += f"{CE.USER} <code>{r.sender_id}</code>\n"
             if u:
-                t += f"📛 {u.first_name or ''}\n"
-                if u.username: t += f"🔗 @{u.username}\n"
-            t += f"💬 `{r.id}`\n"
+                t += f"📛 {html_escape(u.first_name or '')}\n"
+                if u.username:
+                    t += f"{CE.LINK} @{u.username}\n"
+            t += f"{CE.CHAT} <code>{r.id}</code>\n"
         else:
-            t += f"👤 `{event.sender_id}`\n"
-        await event.edit(t)
+            t += f"{CE.USER} <code>{event.sender_id}</code>\n"
+        await safe_edit(event, t)
 
     async def cmd_info(event):
         if event.is_reply:
@@ -2089,7 +2201,7 @@ def load_tools_module(bot: "Userbot"):
                 try:
                     uid = (await bot.client.get_entity(a[1].strip())).id
                 except Exception:
-                    await event.edit("❌ Не найден")
+                    await safe_edit(event, f"{CE.CROSS} Не найден")
                     return
             else:
                 uid = event.sender_id
@@ -2097,17 +2209,19 @@ def load_tools_module(bot: "Userbot"):
             f = await bot.client(GetFullUserRequest(uid))
             u, fu = f.users[0], f.full_user
         except Exception as e:
-            await event.edit(f"❌ {e}")
+            await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
             return
         t = (
-            f"👤 **Инфо**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📛 {u.first_name or ''} {u.last_name or ''}\n🆔 `{u.id}`\n"
-            f"📱 @{u.username or '—'}\n🤖 {'Да' if u.bot else 'Нет'}\n"
-            f"⭐ {'Да' if getattr(u, 'premium', False) else 'Нет'}\n"
+            f"{CE.USER} <b>Инфо</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📛 {html_escape(u.first_name or '')} {html_escape(u.last_name or '')}\n{CE.ID} <code>{u.id}</code>\n"
+            f"📱 @{u.username or '—'}\n{CE.BOT} {'Да' if u.bot else 'Нет'}\n"
+            f"{CE.STAR} {'Да' if getattr(u, 'premium', False) else 'Нет'}\n"
         )
-        if fu.about: t += f"📝 _{fu.about}_\n"
-        if fu.common_chats_count: t += f"👥 {fu.common_chats_count}\n"
-        await event.edit(t)
+        if fu.about:
+            t += f"📝 <i>{html_escape(fu.about)}</i>\n"
+        if fu.common_chats_count:
+            t += f"👥 {fu.common_chats_count}\n"
+        await safe_edit(event, t)
 
     async def cmd_del(event):
         if event.is_reply:
@@ -2119,7 +2233,7 @@ def load_tools_module(bot: "Userbot"):
 
     async def cmd_purge(event):
         if not event.is_reply:
-            await event.edit("❌ Reply")
+            await safe_edit(event, f"{CE.CROSS} Reply")
             return
         r = await event.get_reply_message()
         c = 0
@@ -2130,71 +2244,72 @@ def load_tools_module(bot: "Userbot"):
             except Exception:
                 pass
         await event.delete()
-        tmp = await bot.client.send_message(event.chat_id, f"🗑 {c}")
+        tmp = await safe_send(bot.client, event.chat_id, f"{CE.TRASH} {c}")
         await asyncio.sleep(3)
         await tmp.delete()
 
     async def cmd_chatinfo(event):
         ch = await event.get_chat()
         if isinstance(ch, User):
-            await event.edit("❌ Не чат")
+            await safe_edit(event, f"{CE.CROSS} Не чат")
             return
-        t = f"💬 **{ch.title}**\n━━━━━━━━━━━━━━━━━━━━━\n🆔 `{ch.id}`\n"
+        t = f"{CE.CHAT} <b>{html_escape(ch.title)}</b>\n━━━━━━━━━━━━━━━━━━━━━\n{CE.ID} <code>{ch.id}</code>\n"
         if hasattr(ch, "username") and ch.username:
-            t += f"🔗 @{ch.username}\n"
+            t += f"{CE.LINK} @{ch.username}\n"
         if isinstance(ch, Channel):
             try:
                 fc = (await bot.client(GetFullChannelRequest(ch))).full_chat
                 t += f"👥 {fc.participants_count or '?'}\n"
-                if fc.about: t += f"📝 _{fc.about[:80]}_\n"
+                if fc.about:
+                    t += f"📝 <i>{html_escape(fc.about[:80])}</i>\n"
             except Exception:
                 pass
             t += f"📢 {'Канал' if ch.broadcast else 'Супергруппа'}\n"
-        await event.edit(t)
+        await safe_edit(event, t)
 
     async def cmd_calc(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
-            await event.edit(f"❌ `{p}calc 2+2`")
+            await safe_edit(event, f"{CE.CROSS} <code>{p}calc 2+2</code>")
             return
         expr = a[1].strip()
         if not all(c in "0123456789+-*/().% " for c in expr):
-            await event.edit("❌ Символы!")
+            await safe_edit(event, f"{CE.CROSS} Недопустимые символы!")
             return
         try:
-            await event.edit(f"🔢 `{expr}` = **{eval(expr)}**")
+            await safe_edit(event, f"{CE.CALC} <code>{html_escape(expr)}</code> = <b>{eval(expr)}</b>")
         except Exception as e:
-            await event.edit(f"❌ {e}")
+            await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
     async def cmd_sd(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
-            await event.edit(f"❌ `{p}sd <сек> <текст>`")
+            await safe_edit(event, f"{CE.CROSS} <code>{p}sd &lt;сек&gt; &lt;текст&gt;</code>")
             return
         pts = a[1].split(maxsplit=1)
         try:
             delay = int(pts[0])
             txt = pts[1] if len(pts) > 1 else "💨"
         except (ValueError, IndexError):
-            await event.edit(f"❌ `{p}sd <сек> <текст>`")
+            await safe_edit(event, f"{CE.CROSS} <code>{p}sd &lt;сек&gt; &lt;текст&gt;</code>")
             return
-        await event.edit(f"{txt}\n⏱ ~{delay}с")
+        await safe_edit(event, f"{html_escape(txt)}\n{CE.CLOCK} ~{delay}с")
         await asyncio.sleep(delay)
         await event.delete()
 
     async def cmd_search(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
-            await event.edit(f"❌ `{p}search <q>`")
+            await safe_edit(event, f"{CE.CROSS} <code>{p}search &lt;q&gt;</code>")
             return
         q = a[1].strip()
-        await event.edit(f"🔍 `{q}`...")
+        await safe_edit(event, f"{CE.SEARCH} <code>{html_escape(q)}</code>...")
         rs = []
         async for m in bot.client.iter_messages(event.chat_id, search=q, limit=10):
             s = await m.get_sender()
-            rs.append(f"  `{m.id}` **{s.first_name if s else '?'}**: _{(m.text or '[медиа]')[:35]}_")
-        t = f"🔍 `{q}`\n━━━━━━━━━━━━━━━━━━━━━\n\n" + ("\n".join(rs) if rs else "Ничего")
-        await event.edit(truncate(t))
+            rs.append(f"  <code>{m.id}</code> <b>{html_escape(s.first_name if s else '?')}</b>: <i>{html_escape((m.text or '[медиа]')[:35])}</i>")
+        t = f"{CE.SEARCH} <code>{html_escape(q)}</code>\n━━━━━━━━━━━━━━━━━━━━━\n\n" + ("\n".join(rs) if rs else "Ничего")
+        await safe_edit(event, truncate(t))
 
     mod.commands = {
         "id": Command("id", cmd_id, "ID", "tools", f"{p}id"),
@@ -2217,7 +2332,8 @@ def load_fun_module(bot: "Userbot"):
 
     async def _gt(event):
         a = event.raw_text.split(maxsplit=1)
-        if len(a) > 1: return a[1]
+        if len(a) > 1:
+            return a[1]
         if event.is_reply:
             r = await event.get_reply_message()
             return r.text or ""
@@ -2225,37 +2341,51 @@ def load_fun_module(bot: "Userbot"):
 
     async def cmd_reverse(event):
         t = await _gt(event)
-        if not t: await event.edit(f"❌ `{p}reverse <txt>`"); return
-        await event.edit(t[::-1])
+        if not t:
+            await safe_edit(event, f"{CE.CROSS} <code>{p}reverse &lt;txt&gt;</code>")
+            return
+        await safe_edit(event, html_escape(t[::-1]))
 
     async def cmd_upper(event):
         t = await _gt(event)
-        if not t: await event.edit(f"❌ `{p}upper <txt>`"); return
-        await event.edit(t.upper())
+        if not t:
+            await safe_edit(event, f"{CE.CROSS} <code>{p}upper &lt;txt&gt;</code>")
+            return
+        await safe_edit(event, html_escape(t.upper()))
 
     async def cmd_lower(event):
         t = await _gt(event)
-        if not t: await event.edit(f"❌ `{p}lower <txt>`"); return
-        await event.edit(t.lower())
+        if not t:
+            await safe_edit(event, f"{CE.CROSS} <code>{p}lower &lt;txt&gt;</code>")
+            return
+        await safe_edit(event, html_escape(t.lower()))
 
     async def cmd_mock(event):
         t = await _gt(event)
-        if not t: await event.edit(f"❌ `{p}mock <txt>`"); return
+        if not t:
+            await safe_edit(event, f"{CE.CROSS} <code>{p}mock &lt;txt&gt;</code>")
+            return
         import random
-        await event.edit("".join(c.upper() if random.random() > .5 else c.lower() for c in t))
+        result = "".join(c.upper() if random.random() > .5 else c.lower() for c in t)
+        await safe_edit(event, html_escape(result))
 
     async def cmd_repeat(event):
         a = event.raw_text.split(maxsplit=2)
-        if len(a) < 3: await event.edit(f"❌ `{p}repeat <n> <txt>`"); return
+        if len(a) < 3:
+            await safe_edit(event, f"{CE.CROSS} <code>{p}repeat &lt;n&gt; &lt;txt&gt;</code>")
+            return
         try:
             n = min(int(a[1]), 50)
         except ValueError:
-            await event.edit("❌"); return
-        await event.edit(truncate("\n".join([a[2]] * n)))
+            await safe_edit(event, f"{CE.CROSS} Число!")
+            return
+        await safe_edit(event, truncate(html_escape("\n".join([a[2]] * n))))
 
     async def cmd_type(event):
         a = event.raw_text.split(maxsplit=1)
-        if len(a) < 2: await event.edit(f"❌ `{p}type <txt>`"); return
+        if len(a) < 2:
+            await safe_edit(event, f"{CE.CROSS} <code>{p}type &lt;txt&gt;</code>")
+            return
         typed = ""
         for c in a[1][:100]:
             typed += c
@@ -2271,23 +2401,28 @@ def load_fun_module(bot: "Userbot"):
         a = event.raw_text.split(maxsplit=1)
         s = 6
         if len(a) > 1:
-            try: s = int(a[1])
-            except ValueError: pass
+            try:
+                s = int(a[1])
+            except ValueError:
+                pass
         r = random.randint(1, max(s, 2))
-        await event.edit(f"🎲 d{s}: **{r}**")
+        await safe_edit(event, f"{CE.DICE} d{s}: <b>{r}</b>")
 
     async def cmd_coin(event):
         import random
-        await event.edit(random.choice(["🪙 Орёл!", "🪙 Решка!"]))
+        await safe_edit(event, random.choice([f"{CE.COIN} Орёл!", f"{CE.COIN} Решка!"]))
 
     async def cmd_choose(event):
         import random
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2 or "|" not in a[1]:
-            await event.edit(f"❌ `{p}choose a | b | c`"); return
+            await safe_edit(event, f"{CE.CROSS} <code>{p}choose a | b | c</code>")
+            return
         opts = [o.strip() for o in a[1].split("|") if o.strip()]
-        if not opts: await event.edit("❌"); return
-        await event.edit(f"🎯 {random.choice(opts)}")
+        if not opts:
+            await safe_edit(event, f"{CE.CROSS} Пусто")
+            return
+        await safe_edit(event, f"{CE.TARGET} {html_escape(random.choice(opts))}")
 
     async def cmd_rate(event):
         import random
@@ -2295,7 +2430,7 @@ def load_fun_module(bot: "Userbot"):
         thing = a[1] if len(a) > 1 else "это"
         sc = random.randint(0, 100)
         bar = "█" * (sc // 10) + "░" * (10 - sc // 10)
-        await event.edit(f"📊 **{thing}**\n[{bar}] {sc}%")
+        await safe_edit(event, f"{CE.CHART} <b>{html_escape(thing)}</b>\n[{bar}] {sc}%")
 
     mod.commands = {
         "reverse": Command("reverse", cmd_reverse, "Реверс", "fun", f"{p}reverse"),
@@ -2320,17 +2455,17 @@ def load_admin_module(bot: "Userbot"):
 
     async def _admin_action(event, action_fn, success_msg):
         if not event.is_reply:
-            await event.edit("❌ Reply")
+            await safe_edit(event, f"{CE.CROSS} Reply")
             return
         r = await event.get_reply_message()
         try:
             await action_fn(r)
             u = await r.get_sender()
-            await event.edit(f"{success_msg} **{u.first_name}**!")
+            await safe_edit(event, f"{success_msg} <b>{html_escape(u.first_name)}</b>!")
         except (UserAdminInvalidError, ChatAdminRequiredError):
-            await event.edit("❌ Нет прав!")
+            await safe_edit(event, f"{CE.CROSS} Нет прав!")
         except Exception as e:
-            await event.edit(f"❌ {e}")
+            await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
     async def cmd_ban(event):
         async def do(r):
@@ -2338,7 +2473,7 @@ def load_admin_module(bot: "Userbot"):
             from telethon.tl.types import ChatBannedRights
             await bot.client(EditBannedRequest(event.chat_id, r.sender_id,
                 ChatBannedRights(until_date=None, view_messages=True)))
-        await _admin_action(event, do, "🔨")
+        await _admin_action(event, do, CE.HAMMER)
 
     async def cmd_unban(event):
         async def do(r):
@@ -2346,27 +2481,33 @@ def load_admin_module(bot: "Userbot"):
             from telethon.tl.types import ChatBannedRights
             await bot.client(EditBannedRequest(event.chat_id, r.sender_id,
                 ChatBannedRights(until_date=None)))
-        await _admin_action(event, do, "✅")
+        await _admin_action(event, do, CE.CHECK)
 
     async def cmd_kick(event):
         async def do(r):
             await bot.client.kick_participant(event.chat_id, r.sender_id)
-        await _admin_action(event, do, "👢")
+        await _admin_action(event, do, CE.BOOT)
 
     async def cmd_mute(event):
         if not event.is_reply:
-            await event.edit("❌ Reply"); return
+            await safe_edit(event, f"{CE.CROSS} Reply")
+            return
         r = await event.get_reply_message()
         a = event.raw_text.split(maxsplit=1)
         dur = None
         if len(a) > 1:
             v = a[1].strip()
             try:
-                if v.endswith("m"): dur = timedelta(minutes=int(v[:-1]))
-                elif v.endswith("h"): dur = timedelta(hours=int(v[:-1]))
-                elif v.endswith("d"): dur = timedelta(days=int(v[:-1]))
-                else: dur = timedelta(minutes=int(v))
-            except ValueError: pass
+                if v.endswith("m"):
+                    dur = timedelta(minutes=int(v[:-1]))
+                elif v.endswith("h"):
+                    dur = timedelta(hours=int(v[:-1]))
+                elif v.endswith("d"):
+                    dur = timedelta(days=int(v[:-1]))
+                else:
+                    dur = timedelta(minutes=int(v))
+            except ValueError:
+                pass
         try:
             from telethon.tl.functions.channels import EditBannedRequest
             from telethon.tl.types import ChatBannedRights
@@ -2375,27 +2516,29 @@ def load_admin_module(bot: "Userbot"):
                 ChatBannedRights(until_date=until, send_messages=True, send_media=True,
                     send_stickers=True, send_gifs=True)))
             u = await r.get_sender()
-            await event.edit(f"🔇 **{u.first_name}**!")
+            await safe_edit(event, f"{CE.MUTE} <b>{html_escape(u.first_name)}</b>!")
         except Exception as e:
-            await event.edit(f"❌ {e}")
+            await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
     async def cmd_unmute(event):
         await cmd_unban(event)
 
     async def cmd_pin(event):
-        if not event.is_reply: await event.edit("❌ Reply"); return
+        if not event.is_reply:
+            await safe_edit(event, f"{CE.CROSS} Reply")
+            return
         try:
             await bot.client.pin_message(event.chat_id, (await event.get_reply_message()).id)
-            await event.edit("📌!")
+            await safe_edit(event, f"{CE.PIN}!")
         except Exception as e:
-            await event.edit(f"❌ {e}")
+            await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
     async def cmd_unpin(event):
         try:
             await bot.client.unpin_message(event.chat_id)
-            await event.edit("📌 Откреплено")
+            await safe_edit(event, f"{CE.PIN} Откреплено")
         except Exception as e:
-            await event.edit(f"❌ {e}")
+            await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
     mod.commands = {
         "ban": Command("ban", cmd_ban, "Бан", "admin", f"{p}ban"),
@@ -2429,7 +2572,7 @@ class Userbot:
 
     async def build_kinfo_text(self, ping_start: float = None) -> str:
         ki = self.config.data.get("kinfo", {})
-        template = ki.get("template", DEFAULT_KINFO_TEMPLATE)
+        template = ki.get("template") or get_default_kinfo_template()
         emoji = ki.get("emoji", BRAND_EMOJI)
         if ping_start:
             ping = f"{(time.time() - ping_start) * 1000:.1f}"
@@ -2452,7 +2595,7 @@ class Userbot:
             "uptime": format_uptime(time.time() - self.start_time),
             "modules": str(tm), "builtin": str(bi), "user_mods": str(um),
             "commands": str(len(self._command_handlers)),
-            "prefix": self.config.prefix,
+            "prefix": html_escape(self.config.prefix),
             "python": platform.python_version(),
             "telethon": telethon_version.__version__,
             "os": f"{platform.system()} {platform.release()}",
@@ -2461,7 +2604,7 @@ class Userbot:
         try:
             text = template.format(**vars_dict)
         except (KeyError, IndexError, ValueError):
-            text = DEFAULT_KINFO_TEMPLATE.format(**vars_dict)
+            text = get_default_kinfo_template().format(**vars_dict)
         lines = text.split("\n")
         filtered = []
         hide_map = {
@@ -2502,15 +2645,34 @@ class Userbot:
                 log.error(f"{cn}: {e}")
                 traceback.print_exc()
                 try:
-                    await event.edit(f"❌ `{cn}`: `{e}`")
+                    await safe_edit(event, f"{CE.CROSS} <code>{html_escape(cn)}</code>: <code>{html_escape(str(e))}</code>")
                 except Exception:
                     pass
 
     async def start(self):
+        global _HAS_PREMIUM
+
         self.client = TelegramClient("kub_session", self.config.api_id, self.config.api_hash)
         await self.client.start(phone=self.config.phone)
         me = await self.client.get_me()
         self.config.set("owner_id", me.id)
+
+        # ──── Определяем Premium-статус и переинициализируем CE ────
+        _HAS_PREMIUM = getattr(me, "premium", False) or False
+        _reinit_custom_emoji()
+
+        if _HAS_PREMIUM:
+            log.info(f"⭐ Premium обнаружен — custom emoji включены")
+        else:
+            log.info(f"ℹ️ Premium не обнаружен — обычные эмодзи")
+
+        # Устанавливаем дефолтные шаблоны если не заданы
+        if not self.config.alive_message:
+            self.config.data["alive_message"] = get_default_alive_msg()
+        if not self.config.data.get("kinfo", {}).get("template"):
+            self.config.data.setdefault("kinfo", {})["template"] = get_default_kinfo_template()
+            self.config.save()
+
         log.info(f"👤 {me.first_name} (ID: {me.id})")
 
         self.client.add_event_handler(self._handle_command, events.NewMessage(outgoing=True))
@@ -2573,7 +2735,7 @@ def initial_setup() -> Config:
     config.phone = phone
     config.bot_token = bot_token
     config.prefix = prefix
-    config.alive_message = DEFAULT_ALIVE_MSG
+    config.alive_message = get_default_alive_msg()
     config.save()
     print(f"\n  ✅ Сохранено: {CONFIG_FILE}\n")
     return config
