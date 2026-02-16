@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════╗
-║           kazhurkeUserBot v2.4.0                        ║
+║           kazhurkeUserBot v2.5.0                        ║
 ║     Однофайловый Telegram Userbot с модулями            ║
 ║         и inline-панелью управления                     ║
 ║     + автоустановка зависимостей модулей                 ║
 ║     + HTML разметка + custom emoji                      ║
+║     + мультиязычность (ru/en/uk)                        ║
 ╚══════════════════════════════════════════════════════════╝
 
 Зависимости: pip install telethon cryptg aiohttp
@@ -52,7 +53,7 @@ except ImportError:
 # ──────────────────────── Брендинг ───────────────────────────
 
 BRAND_NAME = "kazhurkeUserBot"
-BRAND_VERSION = "2.4.0"
+BRAND_VERSION = "2.5.0"
 BRAND_EMOJI = "🦊"
 BRAND_SHORT = "KUB"
 
@@ -64,9 +65,250 @@ BANNER = f"""
 ║   Telegram Userbot с модулями и inline-панелью   ║
 ║   + автоустановка зависимостей                   ║
 ║   + HTML разметка + custom emoji                 ║
+║   + мультиязычность (ru/en/uk)                   ║
 ║                                                  ║
 ╚══════════════════════════════════════════════════╝\033[0m
 """
+
+# ──────────────────────── Система локализации ─────────────────
+
+SUPPORTED_LANGUAGES = ["ru", "en", "uk"]
+DEFAULT_LANGUAGE = "ru"
+
+LANG_NAMES = {
+    "ru": "🇷🇺 Русский",
+    "en": "🇬🇧 English",
+    "uk": "🇺🇦 Українська",
+}
+
+_STRINGS: Dict[str, Dict[str, str]] = {
+    "owner": {"ru": "Владелец", "en": "Owner", "uk": "Власник"},
+    "ping_word": {"ru": "Пинг", "en": "Ping", "uk": "Пінг"},
+    "uptime": {"ru": "Аптайм", "en": "Uptime", "uk": "Аптайм"},
+    "modules": {"ru": "Модулей", "en": "Modules", "uk": "Модулів"},
+    "commands": {"ru": "Команд", "en": "Commands", "uk": "Команд"},
+    "prefix_word": {"ru": "Префикс", "en": "Prefix", "uk": "Префікс"},
+    "python_word": {"ru": "Python", "en": "Python", "uk": "Python"},
+    "yes": {"ru": "Да", "en": "Yes", "uk": "Так"},
+    "no": {"ru": "Нет", "en": "No", "uk": "Ні"},
+    "back": {"ru": "Назад", "en": "Back", "uk": "Назад"},
+    "not_found": {"ru": "Не найден", "en": "Not found", "uk": "Не знайдено"},
+    "no_rights": {"ru": "Нет прав!", "en": "No permissions!", "uk": "Немає прав!"},
+    "reply_needed": {"ru": "Reply", "en": "Reply", "uk": "Reply"},
+    "empty": {"ru": "Пусто", "en": "Empty", "uk": "Порожньо"},
+    "error": {"ru": "Ошибка", "en": "Error", "uk": "Помилка"},
+    "saved": {"ru": "Сохранено", "en": "Saved", "uk": "Збережено"},
+    "deleted": {"ru": "Удалено", "en": "Deleted", "uk": "Видалено"},
+    "installed": {"ru": "Установлен", "en": "Installed", "uk": "Встановлено"},
+    "removed": {"ru": "Удалён", "en": "Removed", "uk": "Видалено"},
+    "loading": {"ru": "Загрузка...", "en": "Loading...", "uk": "Завантаження..."},
+    "number_required": {"ru": "Число!", "en": "Number!", "uk": "Число!"},
+    "max_n": {"ru": "Макс", "en": "Max", "uk": "Макс"},
+    "only_py": {"ru": "Только .py", "en": "Only .py", "uk": "Тільки .py"},
+    "no_file": {"ru": "Нет файла", "en": "No file", "uk": "Немає файлу"},
+    "not_chat": {"ru": "Не чат", "en": "Not a chat", "uk": "Не чат"},
+    "invalid_chars": {"ru": "Недопустимые символы!", "en": "Invalid characters!", "uk": "Недопустимі символи!"},
+    "nothing_found": {"ru": "Ничего", "en": "Nothing", "uk": "Нічого"},
+    "alive_working": {"ru": "работает!", "en": "is running!", "uk": "працює!"},
+    "alive_modules": {"ru": "модулей", "en": "modules", "uk": "модулів"},
+    "alive_commands": {"ru": "команд", "en": "commands", "uk": "команд"},
+    "info_card": {"ru": "Инфо-карточка", "en": "Info card", "uk": "Інфо-картка"},
+    "check": {"ru": "Проверка", "en": "Check", "uk": "Перевірка"},
+    "help_word": {"ru": "Помощь", "en": "Help", "uk": "Допомога"},
+    "pong": {"ru": "Понг!", "en": "Pong!", "uk": "Понг!"},
+    "prefix_set": {"ru": "Префикс", "en": "Prefix", "uk": "Префікс"},
+    "modules_list": {"ru": "Модули", "en": "Modules", "uk": "Модулі"},
+    "reloading": {"ru": "Перезагрузка", "en": "Reloading", "uk": "Перезавантаження"},
+    "reloaded": {"ru": "модулей", "en": "modules", "uk": "модулів"},
+    "inline_panel": {"ru": "Inline панель", "en": "Inline panel", "uk": "Inline панель"},
+    "bot_token": {"ru": "Bot token", "en": "Bot token", "uk": "Bot token"},
+    "status_word": {"ru": "Статус", "en": "Status", "uk": "Статус"},
+    "install_file": {"ru": "Установить (файл)", "en": "Install (file)", "uk": "Встановити (файл)"},
+    "uninstall_mod": {"ru": "Удалить модуль", "en": "Uninstall module", "uk": "Видалити модуль"},
+    "download_url": {"ru": "Скачать (URL)", "en": "Download (URL)", "uk": "Завантажити (URL)"},
+    "user_modules": {"ru": "Польз. модули", "en": "User modules", "uk": "Корист. модулі"},
+    "pkg_manage": {"ru": "Управление пакетами", "en": "Package management", "uk": "Керування пакетами"},
+    "mod_settings": {"ru": "Настройки модулей", "en": "Module settings", "uk": "Налаштування модулів"},
+    "executed": {"ru": "выполнено", "en": "executed", "uk": "виконано"},
+    "builtin": {"ru": "Встроенный", "en": "Built-in", "uk": "Вбудований"},
+    "user_mod": {"ru": "Пользовательский", "en": "User", "uk": "Користувацький"},
+    "builtin_module": {"ru": "Встроенный модуль", "en": "Built-in module", "uk": "Вбудований модуль"},
+    "reserved": {"ru": "зарезервировано", "en": "reserved", "uk": "зарезервовано"},
+    "invalid_utf8": {"ru": "Невалидный UTF-8", "en": "Invalid UTF-8", "uk": "Невалідний UTF-8"},
+    "file_must_be_py": {"ru": "Файл должен быть .py", "en": "File must be .py", "uk": "Файл має бути .py"},
+    "kinfo_settings": {"ru": "Настройки kinfo", "en": "kinfo settings", "uk": "Налаштування kinfo"},
+    "tools_word": {"ru": "Инструменты", "en": "Tools", "uk": "Інструменти"},
+    "id_word": {"ru": "ID", "en": "ID", "uk": "ID"},
+    "info_word": {"ru": "Инфо", "en": "Info", "uk": "Інфо"},
+    "delete_word": {"ru": "Удалить", "en": "Delete", "uk": "Видалити"},
+    "purge_word": {"ru": "Purge", "en": "Purge", "uk": "Purge"},
+    "chat_info": {"ru": "Чат инфо", "en": "Chat info", "uk": "Чат інфо"},
+    "calculator": {"ru": "Калькулятор", "en": "Calculator", "uk": "Калькулятор"},
+    "self_destruct": {"ru": "Самоуничтожение", "en": "Self-destruct", "uk": "Самознищення"},
+    "search_word": {"ru": "Поиск", "en": "Search", "uk": "Пошук"},
+    "channel_word": {"ru": "Канал", "en": "Channel", "uk": "Канал"},
+    "supergroup": {"ru": "Супергруппа", "en": "Supergroup", "uk": "Супергрупа"},
+    "unpinned": {"ru": "Откреплено", "en": "Unpinned", "uk": "Відкріплено"},
+    "fun_word": {"ru": "Развлечения", "en": "Fun", "uk": "Розваги"},
+    "reverse_word": {"ru": "Реверс", "en": "Reverse", "uk": "Реверс"},
+    "repeat_word": {"ru": "Повтор", "en": "Repeat", "uk": "Повтор"},
+    "typing_word": {"ru": "Печать", "en": "Typing", "uk": "Друк"},
+    "dice_word": {"ru": "Кубик", "en": "Dice", "uk": "Кубик"},
+    "coin_word": {"ru": "Монета", "en": "Coin", "uk": "Монета"},
+    "heads": {"ru": "Орёл!", "en": "Heads!", "uk": "Орел!"},
+    "tails": {"ru": "Решка!", "en": "Tails!", "uk": "Решка!"},
+    "choose_word": {"ru": "Выбор", "en": "Choose", "uk": "Вибір"},
+    "rate_word": {"ru": "Оценка", "en": "Rate", "uk": "Оцінка"},
+    "admin_word": {"ru": "Администрирование", "en": "Administration", "uk": "Адміністрування"},
+    "ban_word": {"ru": "Бан", "en": "Ban", "uk": "Бан"},
+    "unban_word": {"ru": "Разбан", "en": "Unban", "uk": "Розбан"},
+    "kick_word": {"ru": "Кик", "en": "Kick", "uk": "Кік"},
+    "mute_word": {"ru": "Мут", "en": "Mute", "uk": "Мут"},
+    "unmute_word": {"ru": "Размут", "en": "Unmute", "uk": "Розмут"},
+    "pin_word": {"ru": "Пин", "en": "Pin", "uk": "Пін"},
+    "unpin_word": {"ru": "Анпин", "en": "Unpin", "uk": "Анпін"},
+    "panel_title": {"ru": "Панель", "en": "Panel", "uk": "Панель"},
+    "panel_modules": {"ru": "📋 Модули", "en": "📋 Modules", "uk": "📋 Модулі"},
+    "panel_settings": {"ru": "⚙️ Настройки", "en": "⚙️ Settings", "uk": "⚙️ Налаштування"},
+    "panel_status": {"ru": "📊 Статус", "en": "📊 Status", "uk": "📊 Статус"},
+    "panel_stats": {"ru": "📈 Статистика", "en": "📈 Statistics", "uk": "📈 Статистика"},
+    "panel_user_mods": {"ru": "🔌 Польз.", "en": "🔌 User", "uk": "🔌 Корист."},
+    "panel_kinfo": {"ru": "🎨 kinfo", "en": "🎨 kinfo", "uk": "🎨 kinfo"},
+    "panel_reload": {"ru": "🔄 Перезагрузка", "en": "🔄 Reload", "uk": "🔄 Перезавантаження"},
+    "panel_language": {"ru": "🌐 Язык", "en": "🌐 Language", "uk": "🌐 Мова"},
+    "panel_builtin": {"ru": "встр", "en": "built-in", "uk": "вбуд"},
+    "panel_user": {"ru": "польз", "en": "user", "uk": "корист"},
+    "panel_disabled": {"ru": "выкл", "en": "off", "uk": "вимк"},
+    "panel_enable": {"ru": "🟢 Вкл", "en": "🟢 Enable", "uk": "🟢 Увімк"},
+    "panel_disable": {"ru": "🔴 Выкл", "en": "🔴 Disable", "uk": "🔴 Вимк"},
+    "panel_delete": {"ru": "🗑 Удалить", "en": "🗑 Delete", "uk": "🗑 Видалити"},
+    "panel_to_modules": {"ru": "🔙 К модулям", "en": "🔙 To modules", "uk": "🔙 До модулів"},
+    "panel_prefix": {"ru": "🔧 Префикс", "en": "🔧 Prefix", "uk": "🔧 Префікс"},
+    "panel_alive_msg": {"ru": "💬 Alive-сообщение", "en": "💬 Alive message", "uk": "💬 Alive-повідомлення"},
+    "panel_configure_kinfo": {"ru": "🎨 Настроить kinfo", "en": "🎨 Configure kinfo", "uk": "🎨 Налаштувати kinfo"},
+    "panel_mod_settings": {"ru": "⚙️ Настройки модуля", "en": "⚙️ Module settings", "uk": "⚙️ Налаштування модуля"},
+    "panel_no_access": {"ru": "Нет доступа.", "en": "No access.", "uk": "Немає доступу."},
+    "panel_send_new_prefix": {"ru": "Отправьте новый:", "en": "Send new:", "uk": "Надішліть новий:"},
+    "panel_current": {"ru": "Текущий", "en": "Current", "uk": "Поточний"},
+    "panel_send_alive": {
+        "ru": "Отправьте alive. Переменные: {uptime} {modules} {commands} {emoji} {brand}",
+        "en": "Send alive. Variables: {uptime} {modules} {commands} {emoji} {brand}",
+        "uk": "Надішліть alive. Змінні: {uptime} {modules} {commands} {emoji} {brand}",
+    },
+    "panel_alive_updated": {"ru": "✅ Alive обновлён", "en": "✅ Alive updated", "uk": "✅ Alive оновлено"},
+    "panel_commands_word": {"ru": "Команды", "en": "Commands", "uk": "Команди"},
+    "panel_none": {"ru": "Нет", "en": "None", "uk": "Немає"},
+    "panel_dependencies": {"ru": "Зависимости", "en": "Dependencies", "uk": "Залежності"},
+    "panel_settings_count": {"ru": "настроек", "en": "settings", "uk": "налаштувань"},
+    "panel_installed_mods": {"ru": "Установлено", "en": "Installed", "uk": "Встановлено"},
+    "panel_commands_used": {"ru": "Команд", "en": "Commands", "uk": "Команд"},
+    "panel_preview_sent": {"ru": "Превью отправлено", "en": "Preview sent", "uk": "Прев'ю надіслано"},
+    "panel_photo_set": {"ru": "✅ Фото установлено!", "en": "✅ Photo set!", "uk": "✅ Фото встановлено!"},
+    "panel_photo_url": {"ru": "✅ Фото (URL)!", "en": "✅ Photo (URL)!", "uk": "✅ Фото (URL)!"},
+    "panel_send_photo": {"ru": "Отправьте фото или URL", "en": "Send photo or URL", "uk": "Надішліть фото або URL"},
+    "panel_photo_removed": {"ru": "✅ Фото удалено", "en": "✅ Photo removed", "uk": "✅ Фото видалено"},
+    "panel_template_updated": {"ru": "✅ Шаблон обновлён", "en": "✅ Template updated", "uk": "✅ Шаблон оновлено"},
+    "panel_template_reset": {"ru": "✅ Сброшен", "en": "✅ Reset", "uk": "✅ Скинуто"},
+    "panel_send_line": {"ru": "Отправьте текст строки:", "en": "Send line text:", "uk": "Надішліть текст рядка:"},
+    "panel_line_added": {"ru": "✅ Строка добавлена", "en": "✅ Line added", "uk": "✅ Рядок додано"},
+    "panel_lines_cleared": {"ru": "✅ Очищено", "en": "✅ Cleared", "uk": "✅ Очищено"},
+    "panel_send_emoji": {"ru": "Отправьте эмодзи:", "en": "Send emoji:", "uk": "Надішліть емодзі:"},
+    "panel_emoji_set": {"ru": "✅ Эмодзи:", "en": "✅ Emoji:", "uk": "✅ Емодзі:"},
+    "panel_reloaded": {"ru": "✅ Перезагружено", "en": "✅ Reloaded", "uk": "✅ Перезавантажено"},
+    "panel_additional_lines": {"ru": "Доп. строк", "en": "Extra lines", "uk": "Дод. рядків"},
+    "panel_send_value": {"ru": "Отправьте новое значение:", "en": "Send new value:", "uk": "Надішліть нове значення:"},
+    "panel_type": {"ru": "Тип", "en": "Type", "uk": "Тип"},
+    "panel_current_value": {"ru": "Текущее", "en": "Current", "uk": "Поточне"},
+    "panel_save_error": {"ru": "⚠️ Ошибка сохранения!", "en": "⚠️ Save error!", "uk": "⚠️ Помилка збереження!"},
+    "panel_inline_type_hint": {
+        "ru": "Наберите `@{bot} ` в любом чате",
+        "en": "Type `@{bot} ` in any chat",
+        "uk": "Наберіть `@{bot} ` в будь-якому чаті",
+    },
+    "lang_select": {"ru": "🌐 Выберите язык:", "en": "🌐 Select language:", "uk": "🌐 Оберіть мову:"},
+    "lang_changed": {"ru": "✅ Язык: Русский", "en": "✅ Language: English", "uk": "✅ Мова: Українська"},
+    "lang_current": {"ru": "Текущий язык", "en": "Current language", "uk": "Поточна мова"},
+    "lang_cmd_desc": {"ru": "Язык интерфейса", "en": "Interface language", "uk": "Мова інтерфейсу"},
+    "lang_set_to": {"ru": "Язык изменён на", "en": "Language changed to", "uk": "Мову змінено на"},
+    "pip_install_word": {"ru": "установить", "en": "install", "uk": "встановити"},
+    "pip_uninstall_word": {"ru": "удалить", "en": "uninstall", "uk": "видалити"},
+    "pip_check_word": {"ru": "проверить", "en": "check", "uk": "перевірити"},
+    "pip_version_word": {"ru": "версия пакета", "en": "package version", "uk": "версія пакета"},
+    "pip_installed_word": {"ru": "установленные", "en": "installed", "uk": "встановлені"},
+    "pip_deps_word": {"ru": "зависимости модуля", "en": "module dependencies", "uk": "залежності модуля"},
+    "pip_already_installed": {"ru": "уже установлен", "en": "already installed", "uk": "вже встановлено"},
+    "pip_installing": {"ru": "Устанавливаю", "en": "Installing", "uk": "Встановлюю"},
+    "pip_removing": {"ru": "Удаляю", "en": "Removing", "uk": "Видаляю"},
+    "pip_not_found": {"ru": "не найден или не установлен", "en": "not found or not installed", "uk": "не знайдено або не встановлено"},
+    "pip_packages": {"ru": "Пакеты", "en": "Packages", "uk": "Пакети"},
+    "pip_no_deps": {"ru": "зависимостей нет", "en": "no dependencies", "uk": "залежностей немає"},
+    "pip_unknown_sub": {"ru": "Неизвестная подкоманда", "en": "Unknown subcommand", "uk": "Невідома підкоманда"},
+    "fcfg_manage": {"ru": "Управление настройками модулей", "en": "Module settings management", "uk": "Керування налаштуваннями модулів"},
+    "fcfg_set": {"ru": "установить", "en": "set", "uk": "встановити"},
+    "fcfg_remove": {"ru": "удалить", "en": "remove", "uk": "видалити"},
+    "fcfg_reset": {"ru": "сбросить все настройки модуля", "en": "reset all module settings", "uk": "скинути всі налаштування модуля"},
+    "fcfg_example": {"ru": "Пример", "en": "Example", "uk": "Приклад"},
+    "fcfg_unknown_action": {"ru": "Неизвестный аргумент", "en": "Unknown argument", "uk": "Невідомий аргумент"},
+    "fcfg_allowed": {"ru": "Допустимо", "en": "Allowed", "uk": "Допустимо"},
+    "fcfg_specify_module": {"ru": "Укажите модуль", "en": "Specify module", "uk": "Вкажіть модуль"},
+    "fcfg_after_m": {"ru": "После -m укажите название модуля", "en": "After -m specify module name", "uk": "Після -m вкажіть назву модуля"},
+    "fcfg_module_not_found": {"ru": "Модуль не найден", "en": "Module not found", "uk": "Модуль не знайдено"},
+    "fcfg_available": {"ru": "Доступные", "en": "Available", "uk": "Доступні"},
+    "fcfg_settings_of": {"ru": "Настройки", "en": "Settings", "uk": "Налаштування"},
+    "fcfg_no_schema": {"ru": "нет объявленных настроек", "en": "no declared settings", "uk": "немає оголошених налаштувань"},
+    "fcfg_arbitrary": {"ru": "можете задать произвольный параметр", "en": "you can set arbitrary parameter", "uk": "можете задати довільний параметр"},
+    "fcfg_specify_value": {"ru": "Укажите значение", "en": "Specify value", "uk": "Вкажіть значення"},
+    "fcfg_type_mismatch": {"ru": "должен быть типа", "en": "must be of type", "uk": "має бути типу"},
+    "fcfg_bool_values": {"ru": "Допустимые значения", "en": "Allowed values", "uk": "Допустимі значення"},
+    "fcfg_save_error": {"ru": "Ошибка сохранения", "en": "Save error", "uk": "Помилка збереження"},
+    "fcfg_not_set": {"ru": "не установлен в custom_settings", "en": "not set in custom_settings", "uk": "не встановлено в custom_settings"},
+    "fcfg_param_removed": {"ru": "Параметр удалён из настроек", "en": "Parameter removed from settings", "uk": "Параметр видалено з налаштувань"},
+    "fcfg_default_value": {"ru": "Значение по умолчанию", "en": "Default value", "uk": "Значення за замовчуванням"},
+    "fcfg_no_custom": {"ru": "нет пользовательских настроек для сброса", "en": "no custom settings to reset", "uk": "немає користувацьких налаштувань для скидання"},
+    "fcfg_reset_done": {"ru": "Сброшено", "en": "Reset", "uk": "Скинуто"},
+    "fcfg_settings_of_module": {"ru": "настроек модуля", "en": "settings of module", "uk": "налаштувань модуля"},
+    "install_reply_hint": {
+        "ru": "Ответьте на .py файл или используйте",
+        "en": "Reply to a .py file or use",
+        "uk": "Відповідайте на .py файл або використовуйте",
+    },
+    "install_deps": {"ru": "Установка зависимостей", "en": "Installing dependencies", "uk": "Встановлення залежностей"},
+    "install_downloading": {"ru": "Скачиваю...", "en": "Downloading...", "uk": "Завантажую..."},
+    "install_no_user_mods": {"ru": "Нет польз. модулей", "en": "No user modules", "uk": "Немає корист. модулів"},
+    "settoken_hint": {"ru": "Укажите токен", "en": "Specify token", "uk": "Вкажіть токен"},
+    "settoken_invalid": {"ru": "Невалидный токен", "en": "Invalid token", "uk": "Невалідний токен"},
+    "inline_word": {"ru": "Inline", "en": "Inline", "uk": "Inline"},
+    "setup_title": {"ru": "Настройка", "en": "Setup", "uk": "Налаштування"},
+    "setup_saved": {"ru": "Сохранено", "en": "Saved", "uk": "Збережено"},
+    "setup_stopped": {"ru": "остановлен.", "en": "stopped.", "uk": "зупинено."},
+    "premium_detected": {"ru": "Premium обнаружен — custom emoji включены", "en": "Premium detected — custom emoji enabled", "uk": "Premium виявлено — custom emoji увімкнено"},
+    "premium_not_detected": {"ru": "Premium не обнаружен — обычные эмодзи", "en": "Premium not detected — standard emoji", "uk": "Premium не виявлено — звичайні емодзі"},
+    "user_mods_loaded": {"ru": "пользовательских модулей загружено", "en": "user modules loaded", "uk": "користувацьких модулів завантажено"},
+    "dep_installed": {"ru": "установлено", "en": "installed", "uk": "встановлено"},
+    "dep_failed": {"ru": "не удалось установить", "en": "failed to install", "uk": "не вдалося встановити"},
+    "dep_installing": {"ru": "Устанавливаю зависимость", "en": "Installing dependency", "uk": "Встановлюю залежність"},
+    "inline_disabled": {"ru": "Bot token не указан — inline выключен", "en": "Bot token not set — inline disabled", "uk": "Bot token не вказано — inline вимкнено"},
+    "inline_token_invalid": {"ru": "Bot token невалиден!", "en": "Bot token invalid!", "uk": "Bot token невалідний!"},
+}
+
+
+def _get_lang(bot_or_config=None) -> str:
+    if bot_or_config is None:
+        return DEFAULT_LANGUAGE
+    if hasattr(bot_or_config, 'config'):
+        return bot_or_config.config.data.get("language", DEFAULT_LANGUAGE)
+    if hasattr(bot_or_config, 'data'):
+        return bot_or_config.data.get("language", DEFAULT_LANGUAGE)
+    return DEFAULT_LANGUAGE
+
+
+def S(key: str, bot_or_config=None) -> str:
+    lang = _get_lang(bot_or_config)
+    entry = _STRINGS.get(key)
+    if not entry:
+        return key
+    return entry.get(lang) or entry.get("en") or entry.get("ru") or key
+
 
 # ──────────────────────── Custom Emoji ───────────────────────
 
@@ -178,12 +420,10 @@ def custom_emoji(emoji_id: int, fallback: str = "⭐") -> str:
 
 
 def _strip_custom_emoji(text: str) -> str:
-    """Убирает tg-emoji теги, оставляя fallback текст."""
     return re.sub(r'<tg-emoji[^>]*>([^<]*)</tg-emoji>', r'\1', text)
 
 
 async def safe_edit(event, text: str, **kwargs):
-    """Безопасное редактирование с fallback при ошибке custom emoji."""
     kwargs.setdefault("parse_mode", "html")
     try:
         await event.edit(text, **kwargs)
@@ -204,7 +444,6 @@ async def safe_edit(event, text: str, **kwargs):
 
 
 async def safe_send(client, chat_id, text: str, **kwargs):
-    """Безопасная отправка с fallback."""
     kwargs.setdefault("parse_mode", "html")
     try:
         return await client.send_message(chat_id, text, **kwargs)
@@ -222,7 +461,6 @@ async def safe_send(client, chat_id, text: str, **kwargs):
 
 
 async def safe_send_file(client, chat_id, file, caption: str = "", **kwargs):
-    """Безопасная отправка файла с fallback для caption."""
     kwargs.setdefault("parse_mode", "html")
     try:
         return await client.send_file(chat_id, file, caption=caption, **kwargs)
@@ -287,28 +525,28 @@ MODULES_DIR = "modules"
 DEFAULT_PREFIX = "."
 
 
-def get_default_kinfo_template():
+def get_default_kinfo_template(bot=None):
     return (
         f"{CE.BRAND} <b>{{brand}}</b> v{{version}}\n"
         "━━━━━━━━━━━━━━━━━━━━━\n"
-        f"├ {CE.USER} Владелец: {{owner}}\n"
-        f"├ {CE.PING} Пинг: {{ping}}ms\n"
-        f"├ {CE.CLOCK} Аптайм: {{uptime}}\n"
-        f"├ {CE.PACKAGE} Модулей: {{modules}} ({CE.BLUE}{{builtin}} {CE.GREEN}{{user_mods}})\n"
-        f"├ {CE.WRENCH} Команд: {{commands}}\n"
-        f"├ {CE.KEY} Префикс: {{prefix}}\n"
+        f"├ {CE.USER} {S('owner', bot)}: {{owner}}\n"
+        f"├ {CE.PING} {S('ping_word', bot)}: {{ping}}ms\n"
+        f"├ {CE.CLOCK} {S('uptime', bot)}: {{uptime}}\n"
+        f"├ {CE.PACKAGE} {S('modules', bot)}: {{modules}} ({CE.BLUE}{{builtin}} {CE.GREEN}{{user_mods}})\n"
+        f"├ {CE.WRENCH} {S('commands', bot)}: {{commands}}\n"
+        f"├ {CE.KEY} {S('prefix_word', bot)}: {{prefix}}\n"
         f"├ {CE.PYTHON} Python: {{python}}\n"
         f"├ {CE.SIGNAL} Telethon: {{telethon}}\n"
         f"└ {CE.PC} {{os}}\n"
     )
 
 
-def get_default_alive_msg():
+def get_default_alive_msg(bot=None):
     return (
-        f"{CE.BRAND} <b>{{brand}}</b> работает!\n"
+        f"{CE.BRAND} <b>{{brand}}</b> {S('alive_working', bot)}\n"
         f"├ {CE.CLOCK} {{uptime}}\n"
-        f"├ {CE.PACKAGE} {{modules}} модулей\n"
-        f"└ {CE.WRENCH} {{commands}} команд"
+        f"├ {CE.PACKAGE} {{modules}} {S('alive_modules', bot)}\n"
+        f"└ {CE.WRENCH} {{commands}} {S('alive_commands', bot)}"
     )
 
 
@@ -430,9 +668,9 @@ def install_pip_package(package: str, timeout: int = 120) -> Tuple[bool, str]:
             err = result.stderr.strip().split("\n")[-1] if result.stderr.strip() else "unknown error"
             return False, f"{package}: {err[:200]}"
     except subprocess.TimeoutExpired:
-        return False, f"{package}: таймаут ({timeout}с)"
+        return False, f"{package}: timeout ({timeout}s)"
     except FileNotFoundError:
-        return False, f"{package}: pip не найден"
+        return False, f"{package}: pip not found"
     except Exception as e:
         return False, f"{package}: {e}"
 
@@ -458,16 +696,16 @@ def check_and_install_requirements(content: str) -> Dict[str, Any]:
     for pkg in reqs:
         if is_package_installed(pkg):
             result["already"].append(pkg)
-            log.debug(f"📦 {pkg} — уже установлен")
+            log.debug(f"📦 {pkg} — already installed")
         else:
-            log.info(f"📥 Устанавливаю зависимость: {pkg} ...")
+            log.info(f"📥 Installing: {pkg} ...")
             ok, msg = install_pip_package(pkg)
             if ok:
                 result["installed"].append(pkg)
-                log.info(f"✅ {pkg} установлен")
+                log.info(f"✅ {pkg} installed")
             else:
                 result["failed"].append(msg)
-                log.error(f"❌ Не удалось установить {pkg}: {msg}")
+                log.error(f"❌ Failed {pkg}: {msg}")
     return result
 
 
@@ -481,7 +719,7 @@ async def async_install_pip_package(package: str, timeout: int = 120) -> Tuple[b
             stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout)
         except asyncio.TimeoutError:
             proc.kill()
-            return False, f"{package}: таймаут ({timeout}с)"
+            return False, f"{package}: timeout ({timeout}s)"
         if proc.returncode == 0:
             importlib.invalidate_caches()
             return True, package
@@ -489,7 +727,7 @@ async def async_install_pip_package(package: str, timeout: int = 120) -> Tuple[b
             err = stderr.decode().strip().split("\n")[-1] if stderr else "unknown"
             return False, f"{package}: {err[:200]}"
     except FileNotFoundError:
-        return False, f"{package}: pip не найден"
+        return False, f"{package}: pip not found"
     except Exception as e:
         return False, f"{package}: {e}"
 
@@ -501,11 +739,11 @@ async def async_check_and_install_requirements(content: str) -> Dict[str, Any]:
         if is_package_installed(pkg):
             result["already"].append(pkg)
         else:
-            log.info(f"📥 Устанавливаю зависимость: {pkg} ...")
+            log.info(f"📥 Installing: {pkg} ...")
             ok, msg = await async_install_pip_package(pkg)
             if ok:
                 result["installed"].append(pkg)
-                log.info(f"✅ {pkg} установлен")
+                log.info(f"✅ {pkg} installed")
             else:
                 result["failed"].append(msg)
                 log.error(f"❌ {msg}")
@@ -522,6 +760,7 @@ class Config:
         "phone": "",
         "bot_token": "",
         "prefix": DEFAULT_PREFIX,
+        "language": DEFAULT_LANGUAGE,
         "alive_message": "",
         "disabled_modules": [],
         "custom_settings": {},
@@ -729,10 +968,10 @@ class ModuleManager:
                 self._load_file(f)
                 loaded += 1
             except Exception as e:
-                log.error(f"Ошибка {f.name}: {e}")
+                log.error(f"Error {f.name}: {e}")
                 traceback.print_exc()
         if loaded:
-            log.info(f"📂 {loaded} пользовательских модулей загружено")
+            log.info(f"📂 {loaded} {S('user_mods_loaded', self.bot)}")
 
     def _load_file(self, file: Path):
         content = file.read_text(encoding="utf-8", errors="replace")
@@ -742,15 +981,14 @@ class ModuleManager:
             failed_count = len(deps_result["failed"])
             if installed_count:
                 log.info(
-                    f"📦 {file.stem}: установлено {installed_count}/{len(deps_result['all'])} зависимостей "
+                    f"📦 {file.stem}: {S('dep_installed', self.bot)} {installed_count}/{len(deps_result['all'])} "
                     f"({', '.join(deps_result['installed'])})"
                 )
             if failed_count:
                 log.warning(
-                    f"⚠️ {file.stem}: не удалось установить {failed_count} зависимость(ей): "
+                    f"⚠️ {file.stem}: {S('dep_failed', self.bot)} {failed_count}: "
                     f"{', '.join(deps_result['failed'])}"
                 )
-                log.warning(f"⚠️ {file.stem}: модуль будет загружен, но может работать некорректно")
 
         spec = importlib.util.spec_from_file_location(file.stem, file)
         py = importlib.util.module_from_spec(spec)
@@ -760,7 +998,6 @@ class ModuleManager:
         py.manager = self
         py.module_config = lambda mn, k, d=None: module_config(self.bot, mn, k, d)
         py.module_config_set = lambda mn, k, v: module_config_set(self.bot, mn, k, v)
-        # HTML-утилиты и custom emoji для модулей
         py.html_escape = html_escape
         py.html_bold = html_bold
         py.html_italic = html_italic
@@ -774,27 +1011,28 @@ class ModuleManager:
         py.safe_edit = safe_edit
         py.safe_send = safe_send
         py.safe_send_file = safe_send_file
+        py.S = lambda key: S(key, self.bot)
         spec.loader.exec_module(py)
         if hasattr(py, "setup"):
             py.setup(self.bot)
 
     def install_from_file(self, filename: str, content: bytes) -> Tuple[bool, str]:
         if not filename.endswith(".py"):
-            return False, "Файл должен быть .py"
+            return False, S("file_must_be_py", self.bot)
         mod_name = filename[:-3]
         if mod_name in self._builtin_names:
-            return False, f"{mod_name} зарезервировано"
+            return False, f"{mod_name} {S('reserved', self.bot)}"
         try:
             text_content = content.decode("utf-8")
         except UnicodeDecodeError:
-            return False, "Невалидный UTF-8"
+            return False, S("invalid_utf8", self.bot)
 
         deps_result = check_and_install_requirements(text_content)
         deps_info = ""
         if deps_result["installed"]:
-            deps_info += f"\n📥 Установлены: {', '.join(deps_result['installed'])}"
+            deps_info += f"\n📥 {S('installed', self.bot)}: {', '.join(deps_result['installed'])}"
         if deps_result["failed"]:
-            deps_info += f"\n⚠️ Ошибки: {', '.join(deps_result['failed'])}"
+            deps_info += f"\n⚠️ {S('error', self.bot)}: {', '.join(deps_result['failed'])}"
 
         path = Path(MODULES_DIR)
         path.mkdir(parents=True, exist_ok=True)
@@ -806,7 +1044,7 @@ class ModuleManager:
             self._load_file(fp)
         except Exception as e:
             fp.unlink(missing_ok=True)
-            return False, f"Ошибка: {e}{deps_info}"
+            return False, f"{S('error', self.bot)}: {e}{deps_info}"
         installed = self.bot.config.get("installed_modules", {})
         installed[mod_name] = {
             "filename": filename,
@@ -838,16 +1076,16 @@ class ModuleManager:
                         return False, ">5MB"
                     txt = content.decode("utf-8", errors="replace")
                     if txt.strip().startswith(("<!DOCTYPE", "<html")):
-                        return False, "HTML вместо Python"
+                        return False, "HTML instead of Python"
         except Exception as e:
             return False, str(e)
 
         deps_result = await async_check_and_install_requirements(txt)
         deps_info = ""
         if deps_result["installed"]:
-            deps_info += f"\n📥 Установлены: {', '.join(deps_result['installed'])}"
+            deps_info += f"\n📥 {S('installed', self.bot)}: {', '.join(deps_result['installed'])}"
         if deps_result["failed"]:
-            deps_info += f"\n⚠️ Ошибки: {', '.join(deps_result['failed'])}"
+            deps_info += f"\n⚠️ {S('error', self.bot)}: {', '.join(deps_result['failed'])}"
 
         ok, res = self.install_from_file(fn, content)
         if ok:
@@ -862,7 +1100,7 @@ class ModuleManager:
 
     def uninstall_module(self, name: str) -> Tuple[bool, str]:
         if self.is_builtin(name):
-            return False, "Встроенный модуль"
+            return False, S("builtin_module", self.bot)
         self.unload_module(name)
         deleted = False
         p = Path(MODULES_DIR)
@@ -880,12 +1118,10 @@ class ModuleManager:
                     deleted = True
             del inst[name]
             self.bot.config.set("installed_modules", inst)
-        return True, f"{name} удалён" if deleted else f"{name} выгружен"
+        return True, f"{name} {S('removed', self.bot)}"
 
 
 # ──────────────────────── Inline-панель ──────────────────────
-# Inline-бот НЕ поддерживает custom emoji (ограничение Telegram).
-# Вся панель использует Markdown и обычные unicode-эмодзи.
 
 
 class InlinePanel:
@@ -895,10 +1131,13 @@ class InlinePanel:
         self._states: Dict[int, dict] = {}
         self.active = False
 
+    def _s(self, key: str) -> str:
+        return S(key, self.bot)
+
     async def start(self) -> bool:
         token = self.bot.config.bot_token
         if not token:
-            log.warning("Bot token не указан — inline выключен")
+            log.warning(S("inline_disabled", self.bot))
             return False
         try:
             self.inline_bot = TelegramClient(
@@ -913,11 +1152,11 @@ class InlinePanel:
             self.active = True
             return True
         except AccessTokenInvalidError:
-            log.error("Bot token невалиден!")
+            log.error(S("inline_token_invalid", self.bot))
             self.inline_bot = None
             return False
         except Exception as e:
-            log.error(f"Inline ошибка: {e}")
+            log.error(f"Inline {S('error', self.bot)}: {e}")
             self.inline_bot = None
             return False
 
@@ -944,28 +1183,38 @@ class InlinePanel:
 
     async def _on_inline_query(self, event):
         if not await self._is_owner(event.sender_id):
-            await event.answer([event.builder.article(title="⛔", text="Нет доступа.")])
+            await event.answer([event.builder.article(title="⛔", text=self._s("panel_no_access"))])
             return
         up = format_uptime(time.time() - self.bot.start_time)
         mods = len(self.bot.module_manager.modules)
         cmds = len(self.bot._command_handlers)
         await event.answer([event.builder.article(
-            title=f"{BRAND_EMOJI} {BRAND_NAME} — Панель",
+            title=f"{BRAND_EMOJI} {BRAND_NAME} — {self._s('panel_title')}",
             description=f"⏱ {up} | 📦 {mods} | 🔧 {cmds}",
             text=f"{BRAND_EMOJI} **{BRAND_NAME}** v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━",
             buttons=self._main_buttons(),
         )])
 
-    # ─── кнопки ───
-
     def _main_buttons(self):
         um = len(self.bot.module_manager.get_user_modules())
+        lang = self.bot.config.data.get("language", DEFAULT_LANGUAGE)
+        lang_name = LANG_NAMES.get(lang, lang)
         return [
-            [Button.inline("📋 Модули", b"p:modules"), Button.inline("⚙️ Настройки", b"p:settings")],
-            [Button.inline("📊 Статус", b"p:status"), Button.inline("📈 Статистика", b"p:stats")],
-            [Button.inline(f"🔌 Польз. ({um})", b"p:usermods"), Button.inline("🎨 kinfo", b"p:kinfo")],
-            [Button.inline("🔄 Перезагрузка", b"act:reload")],
+            [Button.inline(self._s("panel_modules"), b"p:modules"), Button.inline(self._s("panel_settings"), b"p:settings")],
+            [Button.inline(self._s("panel_status"), b"p:status"), Button.inline(self._s("panel_stats"), b"p:stats")],
+            [Button.inline(f"{self._s('panel_user_mods')} ({um})", b"p:usermods"), Button.inline(self._s("panel_kinfo"), b"p:kinfo")],
+            [Button.inline(f"{self._s('panel_language')}: {lang_name}", b"p:lang")],
+            [Button.inline(self._s("panel_reload"), b"act:reload")],
         ]
+
+    def _lang_buttons(self):
+        btns = []
+        current = self.bot.config.data.get("language", DEFAULT_LANGUAGE)
+        for code, name in LANG_NAMES.items():
+            marker = " ✅" if code == current else ""
+            btns.append([Button.inline(f"{name}{marker}", f"lang:{code}".encode())])
+        btns.append([Button.inline(f"🔙 {self._s('back')}", b"p:settings")])
+        return btns
 
     def _modules_buttons(self):
         btns = []
@@ -980,19 +1229,20 @@ class InlinePanel:
                 row = []
         if row:
             btns.append(row)
-        btns.append([Button.inline("🔙 Назад", b"p:main")])
+        btns.append([Button.inline(f"🔙 {self._s('back')}", b"p:main")])
         return btns
 
     def _module_buttons(self, name: str):
         dis = name in self.bot.config.disabled_modules
         bi = self.bot.module_manager.is_builtin(name)
-        btns = [[Button.inline("🟢 Вкл" if dis else "🔴 Выкл", f"tog:{name}".encode())]]
+        toggle_text = self._s("panel_enable") if dis else self._s("panel_disable")
+        btns = [[Button.inline(toggle_text, f"tog:{name}".encode())]]
         mod = self.bot.module_manager.modules.get(name)
         if mod and mod.settings_schema:
-            btns.append([Button.inline("⚙️ Настройки модуля", f"ms:{name}".encode())])
+            btns.append([Button.inline(self._s("panel_mod_settings"), f"ms:{name}".encode())])
         if not bi:
-            btns.append([Button.inline("🗑 Удалить", f"del:{name}".encode())])
-        btns.append([Button.inline("🔙 К модулям", b"p:modules")])
+            btns.append([Button.inline(self._s("panel_delete"), f"del:{name}".encode())])
+        btns.append([Button.inline(self._s("panel_to_modules"), b"p:modules")])
         return btns
 
     def _usermods_buttons(self):
@@ -1001,16 +1251,17 @@ class InlinePanel:
         for name, mod in um.items():
             btns.append([Button.inline(f"🟢 {name} v{mod.version}", f"m:{name}".encode())])
         if not btns:
-            btns.append([Button.inline("📭 Пусто", b"p:usermods")])
-        btns.append([Button.inline("🔙 Назад", b"p:main")])
+            btns.append([Button.inline(f"📭 {self._s('empty')}", b"p:usermods")])
+        btns.append([Button.inline(f"🔙 {self._s('back')}", b"p:main")])
         return btns
 
     def _settings_buttons(self):
         return [
-            [Button.inline(f"🔧 Префикс: {self.bot.config.prefix}", b"s:prefix")],
-            [Button.inline("💬 Alive-сообщение", b"s:alive")],
-            [Button.inline("🎨 Настроить kinfo", b"p:kinfo")],
-            [Button.inline("🔙 Назад", b"p:main")],
+            [Button.inline(f"{self._s('panel_prefix')}: {self.bot.config.prefix}", b"s:prefix")],
+            [Button.inline(self._s("panel_alive_msg"), b"s:alive")],
+            [Button.inline(self._s("panel_configure_kinfo"), b"p:kinfo")],
+            [Button.inline(self._s("panel_language"), b"p:lang")],
+            [Button.inline(f"🔙 {self._s('back')}", b"p:main")],
         ]
 
     def _mod_settings_buttons(self, mod_name: str):
@@ -1038,7 +1289,7 @@ class InlinePanel:
                         f"✏️ {s['label']}: {disp}",
                         f"sm:{mod_name}:{s['key']}".encode()
                     )])
-        btns.append([Button.inline("🔙 Назад", f"m:{mod_name}".encode())])
+        btns.append([Button.inline(f"🔙 {self._s('back')}", f"m:{mod_name}".encode())])
         return btns
 
     def _kinfo_buttons(self):
@@ -1046,18 +1297,18 @@ class InlinePanel:
         emoji = ki.get("emoji", BRAND_EMOJI)
         photo = "✅" if ki.get("photo") else "❌"
         btns = [
-            [Button.inline(f"😀 Эмодзи: {emoji}", b"ki:emoji")],
-            [Button.inline(f"🖼 Фото: {photo}", b"ki:photo")],
-            [Button.inline("📝 Шаблон текста", b"ki:template")],
-            [Button.inline("➕ Добавить строку", b"ki:addline")],
-            [Button.inline("🗑 Очистить строки", b"ki:clearlines")],
+            [Button.inline(f"😀 Emoji: {emoji}", b"ki:emoji")],
+            [Button.inline(f"🖼 Photo: {photo}", b"ki:photo")],
+            [Button.inline("📝 Template", b"ki:template")],
+            [Button.inline("➕ Add line", b"ki:addline")],
+            [Button.inline("🗑 Clear lines", b"ki:clearlines")],
         ]
         toggles = [
-            ("show_ping", "🏓 Пинг"), ("show_uptime", "⏱ Аптайм"),
-            ("show_modules", "📦 Модули"), ("show_commands", "🔧 Команды"),
-            ("show_prefix", "🔑 Префикс"), ("show_python", "🐍 Python"),
-            ("show_telethon", "📡 Telethon"), ("show_os", "💻 ОС"),
-            ("show_owner", "👤 Владелец"),
+            ("show_ping", "🏓 Ping"), ("show_uptime", "⏱ Uptime"),
+            ("show_modules", "📦 Modules"), ("show_commands", "🔧 Commands"),
+            ("show_prefix", "🔑 Prefix"), ("show_python", "🐍 Python"),
+            ("show_telethon", "📡 Telethon"), ("show_os", "💻 OS"),
+            ("show_owner", "👤 Owner"),
         ]
         row = []
         for key, label in toggles:
@@ -1069,11 +1320,9 @@ class InlinePanel:
                 row = []
         if row:
             btns.append(row)
-        btns.append([Button.inline("👁 Превью", b"ki:preview")])
-        btns.append([Button.inline("🔙 Назад", b"p:main")])
+        btns.append([Button.inline("👁 Preview", b"ki:preview")])
+        btns.append([Button.inline(f"🔙 {self._s('back')}", b"p:main")])
         return btns
-
-    # ─── callbacks (Markdown, без custom emoji) ───
 
     async def _on_callback(self, event):
         if not await self._is_owner(event.sender_id):
@@ -1086,9 +1335,33 @@ class InlinePanel:
                     f"{BRAND_EMOJI} **{BRAND_NAME}** v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━",
                     buttons=self._main_buttons(),
                 )
+
+            elif data == "p:lang":
+                await event.edit(
+                    self._s("lang_select"),
+                    buttons=self._lang_buttons(),
+                )
+
+            elif data.startswith("lang:"):
+                new_lang = data[5:]
+                if new_lang in SUPPORTED_LANGUAGES:
+                    self.bot.config.set("language", new_lang)
+                    lang_name = LANG_NAMES.get(new_lang, new_lang)
+                    await event.answer(f"✅ {lang_name}", alert=True)
+                    await event.edit(
+                        f"{BRAND_EMOJI} **{BRAND_NAME}** v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━",
+                        buttons=self._main_buttons(),
+                    )
+                else:
+                    await event.answer("❌", alert=True)
+
             elif data == "p:modules":
                 mods = self.bot.module_manager.modules
-                t = f"📋 **Модули** ({len(mods)})\n━━━━━━━━━━━━━━━━━━━━━\n🔵 встр | 🟢 польз | 🔴 выкл\n\n"
+                t = (
+                    f"📋 **{self._s('modules_list')}** ({len(mods)})\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"🔵 {self._s('panel_builtin')} | 🟢 {self._s('panel_user')} | 🔴 {self._s('panel_disabled')}\n\n"
+                )
                 for n, m in mods.items():
                     d = n in self.bot.config.disabled_modules
                     b = self.bot.module_manager.is_builtin(n)
@@ -1100,7 +1373,7 @@ class InlinePanel:
                 um = self.bot.module_manager.get_user_modules()
                 inst = self.bot.config.get("installed_modules", {})
                 p = self.bot.config.prefix
-                t = f"🔌 **Пользовательские** ({len(um)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                t = f"🔌 **{self._s('user_modules')}** ({len(um)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
                 if um:
                     for n, m in um.items():
                         info = inst.get(n, {})
@@ -1108,16 +1381,16 @@ class InlinePanel:
                         reqs = info.get("requirements", [])
                         t += f"🟢 **{n}** `v{m.version}` {src}\n"
                         if reqs:
-                            t += f"   📦 Зависимости: `{', '.join(reqs)}`\n"
+                            t += f"   📦 {self._s('panel_dependencies')}: `{', '.join(reqs)}`\n"
                         if m.settings_schema:
-                            t += f"   ⚙️ {len(m.settings_schema)} настроек\n"
+                            t += f"   ⚙️ {len(m.settings_schema)} {self._s('panel_settings_count')}\n"
                 else:
-                    t += f"📭 Пусто\n`{p}im` / `{p}dlm <url>`\n"
+                    t += f"📭 {self._s('empty')}\n`{p}im` / `{p}dlm <url>`\n"
                 await event.edit(t, buttons=self._usermods_buttons())
 
             elif data == "p:settings":
                 await event.edit(
-                    f"⚙️ **Настройки**\n━━━━━━━━━━━━━━━━━━━━━",
+                    f"⚙️ **{self._s('panel_settings')}**\n━━━━━━━━━━━━━━━━━━━━━",
                     buttons=self._settings_buttons(),
                 )
 
@@ -1127,56 +1400,57 @@ class InlinePanel:
                 um = len(self.bot.module_manager.get_user_modules())
                 tm = len(self.bot.module_manager.modules)
                 t = (
-                    f"📊 **Статус**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"📊 **{self._s('status_word')}**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"👤 {me.first_name} `{me.id}`\n⏱ **{up}**\n"
                     f"📦 {tm} (🔵{tm - um} 🟢{um})\n🔧 {len(self.bot._command_handlers)}\n"
                     f"🔑 `{self.bot.config.prefix}`\n"
                     f"🐍 `{platform.python_version()}`\n📡 `{telethon_version.__version__}`\n"
                     f"💻 {platform.system()} {platform.release()}\n"
-                    f"🤖 Inline: {'✅' if self.active else '❌'}"
+                    f"🤖 {self._s('inline_word')}: {'✅' if self.active else '❌'}"
                 )
-                await event.edit(t, buttons=[[Button.inline("🔙", b"p:main")]])
+                await event.edit(t, buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:main")]])
 
             elif data == "p:stats":
                 st = self.bot.config.get("stats", {})
                 t = (
-                    f"📈 **Статистика**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"🔧 Команд: **{st.get('commands_used', 0)}**\n"
-                    f"📦 Установлено: **{len(self.bot.config.get('installed_modules', {}))}**\n"
+                    f"📈 **{self._s('panel_stats')}**\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"🔧 {self._s('panel_commands_used')}: **{st.get('commands_used', 0)}**\n"
+                    f"📦 {self._s('panel_installed_mods')}: **{len(self.bot.config.get('installed_modules', {}))}**\n"
                 )
-                await event.edit(t, buttons=[[Button.inline("🔙", b"p:main")]])
+                await event.edit(t, buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:main")]])
 
             elif data == "p:prefix":
                 self._states[event.sender_id] = {"w": "prefix"}
-                await event.edit(f"🔧 Текущий: `{self.bot.config.prefix}`\nОтправьте новый:",
-                                 buttons=[[Button.inline("🔙", b"p:settings")]])
+                await event.edit(
+                    f"🔧 {self._s('panel_current')}: `{self.bot.config.prefix}`\n{self._s('panel_send_new_prefix')}",
+                    buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:settings")]]
+                )
 
             elif data == "p:alive":
                 self._states[event.sender_id] = {"w": "alive"}
-                await event.edit("💬 Отправьте alive. Переменные: {uptime} {modules} {commands} {emoji} {brand}",
-                                 buttons=[[Button.inline("🔙", b"p:settings")]])
+                await event.edit(self._s("panel_send_alive"),
+                                 buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:settings")]])
 
-            # ─── kinfo ───
             elif data == "p:kinfo":
                 ki = self.bot.config.data.get("kinfo", {})
                 cl = ki.get("custom_lines", [])
                 await event.edit(
-                    f"🎨 **Настройка kinfo**\n━━━━━━━━━━━━━━━━━━━━━\nДоп. строк: {len(cl)}",
+                    f"🎨 **{self._s('panel_kinfo')}**\n━━━━━━━━━━━━━━━━━━━━━\n{self._s('panel_additional_lines')}: {len(cl)}",
                     buttons=self._kinfo_buttons(),
                 )
             elif data == "ki:emoji":
                 self._states[event.sender_id] = {"w": "kinfo_emoji"}
-                await event.edit("😀 Отправьте эмодзи:", buttons=[[Button.inline("🔙", b"p:kinfo")]])
+                await event.edit(f"😀 {self._s('panel_send_emoji')}", buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:kinfo")]])
             elif data == "ki:photo":
                 self._states[event.sender_id] = {"w": "kinfo_photo"}
                 ki = self.bot.config.data.get("kinfo", {})
                 cur = ki.get("photo", "")
                 btns = []
                 if cur:
-                    btns.append([Button.inline("🗑 Удалить фото", b"ki:rmphoto")])
-                btns.append([Button.inline("🔙", b"p:kinfo")])
+                    btns.append([Button.inline("🗑 Remove photo", b"ki:rmphoto")])
+                btns.append([Button.inline(f"🔙 {self._s('back')}", b"p:kinfo")])
                 await event.edit(
-                    f"🖼 **Фото**\n{'Установлено ✅' if cur else 'Нет ❌'}\nОтправьте фото или URL:",
+                    f"🖼 **Photo**\n{'✅' if cur else '❌'}\n{self._s('panel_send_photo')}:",
                     buttons=btns,
                 )
             elif data == "ki:rmphoto":
@@ -1184,43 +1458,42 @@ class InlinePanel:
                 ki["photo"] = ""
                 self.bot.config.data["kinfo"] = ki
                 self.bot.config.save()
-                await event.answer("✅ Фото удалено", alert=True)
+                await event.answer(self._s("panel_photo_removed"), alert=True)
                 await event.edit(buttons=self._kinfo_buttons())
             elif data == "ki:template":
                 self._states[event.sender_id] = {"w": "kinfo_template"}
                 await event.edit(
-                    "📝 **Шаблон** (HTML)\nПеременные: {emoji} {brand} {version} {owner} {ping} {uptime}\n"
+                    "📝 **Template** (HTML)\nVariables: {emoji} {brand} {version} {owner} {ping} {uptime}\n"
                     "{modules} {builtin} {user_mods} {commands} {prefix} {python} {telethon} {os} {custom_lines}",
                     buttons=[
-                        [Button.inline("🔄 Сбросить", b"ki:resettemplate")],
-                        [Button.inline("🔙", b"p:kinfo")],
+                        [Button.inline("🔄 Reset", b"ki:resettemplate")],
+                        [Button.inline(f"🔙 {self._s('back')}", b"p:kinfo")],
                     ],
                 )
             elif data == "ki:resettemplate":
                 ki = dict(self.bot.config.data.get("kinfo", {}))
-                ki["template"] = get_default_kinfo_template()
+                ki["template"] = get_default_kinfo_template(self.bot)
                 self.bot.config.data["kinfo"] = ki
                 self.bot.config.save()
-                await event.answer("✅ Сброшен", alert=True)
+                await event.answer(self._s("panel_template_reset"), alert=True)
                 await event.edit(buttons=self._kinfo_buttons())
             elif data == "ki:addline":
                 self._states[event.sender_id] = {"w": "kinfo_addline"}
-                await event.edit("➕ Отправьте текст строки:",
-                                 buttons=[[Button.inline("🔙", b"p:kinfo")]])
+                await event.edit(f"➕ {self._s('panel_send_line')}",
+                                 buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:kinfo")]])
             elif data == "ki:clearlines":
                 ki = dict(self.bot.config.data.get("kinfo", {}))
                 ki["custom_lines"] = []
                 self.bot.config.data["kinfo"] = ki
                 self.bot.config.save()
-                await event.answer("✅ Очищено", alert=True)
+                await event.answer(self._s("panel_lines_cleared"), alert=True)
                 await event.edit(buttons=self._kinfo_buttons())
             elif data == "ki:preview":
                 text = await self.bot.build_kinfo_text()
                 ki = self.bot.config.data.get("kinfo", {})
                 if ki.get("photo"):
-                    await event.answer("Превью отправлено", alert=True)
+                    await event.answer(self._s("panel_preview_sent"), alert=True)
                     try:
-                        # Для inline-бота убираем custom emoji из caption
                         clean_text = _strip_custom_emoji(text)
                         await self.inline_bot.send_file(event.sender_id, ki["photo"], caption=clean_text, parse_mode="html")
                     except Exception:
@@ -1229,9 +1502,8 @@ class InlinePanel:
                         except Exception:
                             await self.inline_bot.send_message(event.sender_id, re.sub(r'<[^>]+>', '', text))
                 else:
-                    # Для inline — без custom emoji
                     clean_text = _strip_custom_emoji(text)
-                    await event.edit(clean_text, buttons=[[Button.inline("🔙", b"p:kinfo")]], parse_mode="html")
+                    await event.edit(clean_text, buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:kinfo")]], parse_mode="html")
             elif data.startswith("kit:"):
                 key = data[4:]
                 ki = dict(self.bot.config.data.get("kinfo", {}))
@@ -1240,12 +1512,11 @@ class InlinePanel:
                 self.bot.config.save()
                 await event.edit(buttons=self._kinfo_buttons())
 
-            # ─── Module callbacks ───
             elif data.startswith("m:"):
                 name = data[2:]
                 mod = self.bot.module_manager.modules.get(name)
                 if not mod:
-                    await event.answer("Не найден", alert=True)
+                    await event.answer(self._s("not_found"), alert=True)
                     return
                 bi = self.bot.module_manager.is_builtin(name)
                 ct = ""
@@ -1253,7 +1524,7 @@ class InlinePanel:
                     ct += f"  `{self.bot.config.prefix}{cn}` — {cmd.description}\n"
                 sp = ""
                 if mod.settings_schema:
-                    sp = f"\n⚙️ **Настройки:** {len(mod.settings_schema)}\n"
+                    sp = f"\n⚙️ **{self._s('panel_settings')}:** {len(mod.settings_schema)}\n"
                     custom = self.bot.config.data.get("custom_settings", {})
                     for s in mod.settings_schema[:5]:
                         k = f"{name}.{s['key']}"
@@ -1264,12 +1535,17 @@ class InlinePanel:
                 info = inst.get(name, {})
                 reqs = info.get("requirements", []) or mod.requirements
                 if reqs:
-                    deps_text = f"\n📦 **Зависимости:** `{', '.join(reqs)}`\n"
+                    deps_text = f"\n📦 **{self._s('panel_dependencies')}:** `{', '.join(reqs)}`\n"
+                bi_label = self._s("builtin") if bi else self._s("user_mod")
+                bi_icon = "🔵" if bi else "🟢"
+                none_text = self._s("panel_none")
+                cmds_label = self._s("panel_commands_word")
+                cmds_display = ct if ct else f"_{none_text}_"
                 t = (
                     f"📦 **{mod.name}** `v{mod.version}`\n━━━━━━━━━━━━━━━━━━━━━\n"
-                    f"{'🔵 Встроенный' if bi else '🟢 Пользовательский'}\n"
+                    f"{bi_icon} {bi_label}\n"
                     f"👤 {mod.author}\n📝 {mod.description}\n{deps_text}{sp}\n"
-                    f"**Команды:**\n{ct or '_Нет_'}"
+                    f"**{cmds_label}:**\n{cmds_display}"
                 )
                 await event.edit(t, buttons=self._module_buttons(name))
 
@@ -1288,12 +1564,12 @@ class InlinePanel:
                 ok, msg = self.bot.module_manager.uninstall_module(name)
                 await event.answer(f"{'✅' if ok else '❌'} {msg}", alert=True)
                 if ok:
-                    await event.edit(f"🗑 {msg}", buttons=[[Button.inline("🔙", b"p:modules")]])
+                    await event.edit(f"🗑 {msg}", buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:modules")]])
 
             elif data.startswith("ms:"):
                 mn = data[3:]
                 mod = self.bot.module_manager.modules.get(mn)
-                t = f"⚙️ **Настройки: {mn}**\n━━━━━━━━━━━━━━━━━━━━━\n"
+                t = f"⚙️ **{self._s('fcfg_settings_of')}: {mn}**\n━━━━━━━━━━━━━━━━━━━━━\n"
                 if mod and mod.settings_schema:
                     t += f"\n{mod.description}\n\n"
                     custom = self.bot.config.data.get("custom_settings", {})
@@ -1316,11 +1592,11 @@ class InlinePanel:
                 cur = self.bot.config.data.get("custom_settings", {}).get(f"{mn}.{key}", schema.get("default", "—"))
                 await event.edit(
                     f"✏️ **{schema.get('label', key)}**\n"
-                    f"Тип: `{stype}`\n"
-                    f"Текущее: `{cur}`\n"
+                    f"{self._s('panel_type')}: `{stype}`\n"
+                    f"{self._s('panel_current_value')}: `{cur}`\n"
                     f"{f'ℹ️ {desc}' if desc else ''}\n\n"
-                    f"Отправьте новое значение:",
-                    buttons=[[Button.inline("🔙", f"ms:{mn}".encode())]],
+                    f"{self._s('panel_send_value')}",
+                    buttons=[[Button.inline(f"🔙 {self._s('back')}", f"ms:{mn}".encode())]],
                 )
 
             elif data.startswith("stoggle:"):
@@ -1347,10 +1623,10 @@ class InlinePanel:
 
             elif data == "s:prefix":
                 self._states[event.sender_id] = {"w": "prefix"}
-                await event.edit("🔧 Новый префикс:", buttons=[[Button.inline("🔙", b"p:settings")]])
+                await event.edit(f"🔧 {self._s('panel_send_new_prefix')}", buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:settings")]])
             elif data == "s:alive":
                 self._states[event.sender_id] = {"w": "alive"}
-                await event.edit("💬 Новый alive:", buttons=[[Button.inline("🔙", b"p:settings")]])
+                await event.edit(self._s("panel_send_alive"), buttons=[[Button.inline(f"🔙 {self._s('back')}", b"p:settings")]])
 
             elif data == "act:reload":
                 bi = set(self.bot.module_manager._builtin_names)
@@ -1358,8 +1634,8 @@ class InlinePanel:
                     self.bot.module_manager.unload_module(n)
                 self.bot.module_manager.load_from_directory()
                 mc = len(self.bot.module_manager.modules)
-                await event.answer(f"✅ {mc} модулей", alert=True)
-                await event.edit(f"✅ Перезагружено ({mc})", buttons=self._main_buttons())
+                await event.answer(f"✅ {mc} {self._s('reloaded')}", alert=True)
+                await event.edit(f"{self._s('panel_reloaded')} ({mc})", buttons=self._main_buttons())
 
         except Exception as e:
             log.error(f"CB: {e}")
@@ -1369,8 +1645,6 @@ class InlinePanel:
             except Exception:
                 pass
 
-    # ─── messages ───
-
     async def _on_message(self, event):
         if not await self._is_owner(event.sender_id):
             return
@@ -1379,7 +1653,8 @@ class InlinePanel:
         if not st:
             if self.inline_bot:
                 me = await self.inline_bot.get_me()
-                await event.reply(f"Наберите `@{me.username} ` в любом чате")
+                hint = self._s("panel_inline_type_hint").replace("{bot}", me.username)
+                await event.reply(hint)
             return
 
         w = st.get("w")
@@ -1388,14 +1663,14 @@ class InlinePanel:
 
         if w == "prefix":
             if len(txt) > 3:
-                await event.reply("❌ Макс 3")
+                await event.reply(f"❌ {self._s('max_n')} 3")
                 return
             self.bot.config.set("prefix", txt)
-            await event.reply(f"✅ Префикс: `{txt}`")
+            await event.reply(f"✅ {self._s('prefix_word')}: `{txt}`")
 
         elif w == "alive":
             self.bot.config.set("alive_message", txt)
-            await event.reply("✅ Alive обновлён")
+            await event.reply(self._s("panel_alive_updated"))
 
         elif w == "modsetting":
             mn = st.get("mn", "")
@@ -1411,9 +1686,9 @@ class InlinePanel:
                 if saved == txt:
                     await event.reply(f"✅ `{mn}.{key}` = `{txt}`")
                 else:
-                    await event.reply(f"⚠️ Ошибка сохранения! Ожидалось `{txt}`, получено `{saved}`")
+                    await event.reply(self._s("panel_save_error"))
             else:
-                await event.reply("❌ Не указан модуль или ключ")
+                await event.reply(f"❌ {self._s('fcfg_specify_module')}")
                 handled = False
 
         elif w == "kinfo_emoji":
@@ -1421,7 +1696,7 @@ class InlinePanel:
             ki["emoji"] = txt[:5]
             self.bot.config.data["kinfo"] = ki
             self.bot.config.save()
-            await event.reply(f"✅ Эмодзи: {txt[:5]}")
+            await event.reply(f"{self._s('panel_emoji_set')} {txt[:5]}")
 
         elif w == "kinfo_photo":
             ki = dict(self.bot.config.data.get("kinfo", {}))
@@ -1431,14 +1706,14 @@ class InlinePanel:
                 ki["photo"] = photo_path
                 self.bot.config.data["kinfo"] = ki
                 self.bot.config.save()
-                await event.reply("✅ Фото установлено!")
+                await event.reply(self._s("panel_photo_set"))
             elif txt.startswith(("http://", "https://")):
                 ki["photo"] = txt
                 self.bot.config.data["kinfo"] = ki
                 self.bot.config.save()
-                await event.reply("✅ Фото (URL)!")
+                await event.reply(self._s("panel_photo_url"))
             else:
-                await event.reply("❌ Отправьте фото или URL")
+                await event.reply(f"❌ {self._s('panel_send_photo')}")
                 return
 
         elif w == "kinfo_template":
@@ -1446,7 +1721,7 @@ class InlinePanel:
             ki["template"] = txt
             self.bot.config.data["kinfo"] = ki
             self.bot.config.save()
-            await event.reply("✅ Шаблон обновлён")
+            await event.reply(self._s("panel_template_updated"))
 
         elif w == "kinfo_addline":
             ki = dict(self.bot.config.data.get("kinfo", {}))
@@ -1455,7 +1730,7 @@ class InlinePanel:
             ki["custom_lines"] = lines
             self.bot.config.data["kinfo"] = ki
             self.bot.config.save()
-            await event.reply(f"✅ Строка добавлена ({len(lines)})")
+            await event.reply(f"{self._s('panel_line_added')} ({len(lines)})")
 
         else:
             handled = False
@@ -1468,13 +1743,13 @@ class InlinePanel:
 
 
 def load_core_module(bot: "Userbot"):
-    mod = Module(name="core", description="Основные команды", author=BRAND_NAME, version=BRAND_VERSION)
+    mod = Module(name="core", description=S("check", bot), author=BRAND_NAME, version=BRAND_VERSION)
     p = bot.config.prefix
 
     async def cmd_alive(event):
         up = format_uptime(time.time() - bot.start_time)
         me = await bot.client.get_me()
-        t = bot.config.alive_message or get_default_alive_msg()
+        t = bot.config.alive_message or get_default_alive_msg(bot)
         try:
             t = t.format(
                 uptime=up, modules=len(bot.module_manager.modules),
@@ -1504,13 +1779,12 @@ def load_core_module(bot: "Userbot"):
     async def cmd_kset(event):
         args = event.raw_text.split(maxsplit=2)
         if len(args) < 2:
-            ki = bot.config.data.get("kinfo", {})
             await safe_edit(event,
-                f"{CE.PAINT} <b>kinfo настройки</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"<code>{p}kset emoji &lt;эмодзи&gt;</code>\n"
-                f"<code>{p}kset photo</code> (ответ на фото)\n"
+                f"{CE.PAINT} <b>{S('kinfo_settings', bot)}</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"<code>{p}kset emoji &lt;emoji&gt;</code>\n"
+                f"<code>{p}kset photo</code> (reply)\n"
                 f"<code>{p}kset photo &lt;url/remove&gt;</code>\n"
-                f"<code>{p}kset addline &lt;текст&gt;</code>\n"
+                f"<code>{p}kset addline &lt;text&gt;</code>\n"
                 f"<code>{p}kset clearlines</code>\n"
                 f"<code>{p}kset reset</code>"
             )
@@ -1519,7 +1793,7 @@ def load_core_module(bot: "Userbot"):
         ki = dict(bot.config.data.get("kinfo", {}))
         if sub == "emoji":
             if len(args) < 3:
-                await safe_edit(event, f"{CE.CROSS} <code>{p}kset emoji &lt;эмодзи&gt;</code>")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}kset emoji &lt;emoji&gt;</code>")
                 return
             ki["emoji"] = args[2][:5]
             bot.config.data["kinfo"] = ki
@@ -1534,7 +1808,7 @@ def load_core_module(bot: "Userbot"):
                     ki["photo"] = path
                     bot.config.data["kinfo"] = ki
                     bot.config.save()
-                    await safe_edit(event, f"{CE.CHECK} Фото!")
+                    await safe_edit(event, f"{CE.CHECK} Photo!")
                     return
             if len(args) >= 3:
                 val = args[2].strip()
@@ -1542,36 +1816,36 @@ def load_core_module(bot: "Userbot"):
                     ki["photo"] = ""
                     bot.config.data["kinfo"] = ki
                     bot.config.save()
-                    await safe_edit(event, f"{CE.CHECK} Удалено")
+                    await safe_edit(event, f"{CE.CHECK} {S('deleted', bot)}")
                 elif val.startswith(("http://", "https://")):
                     ki["photo"] = val
                     bot.config.data["kinfo"] = ki
                     bot.config.save()
-                    await safe_edit(event, f"{CE.CHECK} Фото (URL)!")
+                    await safe_edit(event, f"{CE.CHECK} Photo (URL)!")
                 else:
-                    await safe_edit(event, f"{CE.CROSS} URL или <code>remove</code>")
+                    await safe_edit(event, f"{CE.CROSS} URL or <code>remove</code>")
             else:
-                await safe_edit(event, f"{CE.CROSS} Ответьте на фото или <code>{p}kset photo &lt;url/remove&gt;</code>")
+                await safe_edit(event, f"{CE.CROSS} Reply to photo or <code>{p}kset photo &lt;url/remove&gt;</code>")
         elif sub == "addline":
             if len(args) < 3:
-                await safe_edit(event, f"{CE.CROSS} <code>{p}kset addline &lt;текст&gt;</code>")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}kset addline &lt;text&gt;</code>")
                 return
             lines = list(ki.get("custom_lines", []))
             lines.append(args[2])
             ki["custom_lines"] = lines
             bot.config.data["kinfo"] = ki
             bot.config.save()
-            await safe_edit(event, f"{CE.CHECK} Строка ({len(lines)})")
+            await safe_edit(event, f"{CE.CHECK} ({len(lines)})")
         elif sub == "clearlines":
             ki["custom_lines"] = []
             bot.config.data["kinfo"] = ki
             bot.config.save()
-            await safe_edit(event, f"{CE.CHECK} Очищено")
+            await safe_edit(event, f"{CE.CHECK} {S('deleted', bot)}")
         elif sub == "reset":
             bot.config.data["kinfo"] = dict(Config._defaults["kinfo"])
-            bot.config.data["kinfo"]["template"] = get_default_kinfo_template()
+            bot.config.data["kinfo"]["template"] = get_default_kinfo_template(bot)
             bot.config.save()
-            await safe_edit(event, f"{CE.CHECK} Сброшено")
+            await safe_edit(event, f"{CE.CHECK} Reset")
         else:
             await safe_edit(event, f"{CE.CROSS} <code>{html_escape(sub)}</code>?")
 
@@ -1587,7 +1861,7 @@ def load_core_module(bot: "Userbot"):
                     f"{CE.BULB} <code>{html_escape(cmd.usage)}</code>"
                 )
             else:
-                await safe_edit(event, f"{CE.CROSS} <code>{html_escape(cn)}</code> не найдена")
+                await safe_edit(event, f"{CE.CROSS} <code>{html_escape(cn)}</code> {S('not_found', bot)}")
             return
         t = f"{CE.BRAND} <b>{BRAND_NAME}</b> v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━\n\n"
         for mn, m in bot.module_manager.modules.items():
@@ -1607,7 +1881,7 @@ def load_core_module(bot: "Userbot"):
         await safe_edit(event, f"{CE.BRAND} ...")
         e = (time.time() - s) * 1000
         await safe_edit(event,
-            f"{CE.PING} <b>Понг!</b> <code>{e:.1f}ms</code>\n{CE.CLOCK} {format_uptime(time.time() - bot.start_time)}"
+            f"{CE.PING} <b>{S('pong', bot)}</b> <code>{e:.1f}ms</code>\n{CE.CLOCK} {format_uptime(time.time() - bot.start_time)}"
         )
 
     async def cmd_prefix(event):
@@ -1617,15 +1891,36 @@ def load_core_module(bot: "Userbot"):
             return
         n = args[1].strip()
         if len(n) > 3:
-            await safe_edit(event, f"{CE.CROSS} Макс 3!")
+            await safe_edit(event, f"{CE.CROSS} {S('max_n', bot)} 3!")
             return
         bot.config.set("prefix", n)
-        await safe_edit(event, f"{CE.CHECK} Префикс: <code>{html_escape(n)}</code>")
+        await safe_edit(event, f"{CE.CHECK} {S('prefix_word', bot)}: <code>{html_escape(n)}</code>")
+
+    async def cmd_lang(event):
+        args = event.raw_text.split(maxsplit=1)
+        if len(args) < 2:
+            current = bot.config.data.get("language", DEFAULT_LANGUAGE)
+            lang_name = LANG_NAMES.get(current, current)
+            t = f"{CE.GLOBE} <b>{S('lang_current', bot)}: {lang_name}</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+            for code, name in LANG_NAMES.items():
+                marker = " ✅" if code == current else ""
+                t += f"  <code>{code}</code> — {name}{marker}\n"
+            t += f"\n{CE.BULB} <code>{p}lang &lt;ru/en/uk&gt;</code>"
+            await safe_edit(event, t)
+            return
+        new_lang = args[1].strip().lower()
+        if new_lang not in SUPPORTED_LANGUAGES:
+            available = ", ".join(f"<code>{c}</code>" for c in SUPPORTED_LANGUAGES)
+            await safe_edit(event, f"{CE.CROSS} {available}")
+            return
+        bot.config.set("language", new_lang)
+        lang_name = LANG_NAMES.get(new_lang, new_lang)
+        await safe_edit(event, f"{CE.CHECK} {S('lang_set_to', bot)} {lang_name}")
 
     async def cmd_modules(event):
         mods = bot.module_manager.modules
         um = bot.module_manager.get_user_modules()
-        t = f"{CE.PACKAGE} <b>Модули</b> ({len(mods)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+        t = f"{CE.PACKAGE} <b>{S('modules_list', bot)}</b> ({len(mods)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
         tc = 0
         for n, m in mods.items():
             d = n in bot.config.disabled_modules
@@ -1636,7 +1931,7 @@ def load_core_module(bot: "Userbot"):
             sc = f" {CE.GEAR}{len(m.settings_schema)}" if m.settings_schema else ""
             deps = f" {CE.PACKAGE}{len(m.requirements)}" if m.requirements else ""
             t += f"{i} <b>{html_escape(n)}</b> <code>v{m.version}</code> [{cc}cmd{sc}{deps}]\n"
-        t += f"\n{CE.CHART} {tc} команд, {len(um)} польз."
+        t += f"\n{CE.CHART} {tc} {S('commands', bot)}, {len(um)} {S('user_mod', bot)}."
         await safe_edit(event, t)
 
     async def cmd_reload(event):
@@ -1645,7 +1940,7 @@ def load_core_module(bot: "Userbot"):
         for n in [x for x in list(bot.module_manager.modules) if x not in bi]:
             bot.module_manager.unload_module(n)
         bot.module_manager.load_from_directory()
-        await safe_edit(event, f"{CE.CHECK} {len(bot.module_manager.modules)} модулей | {len(bot._command_handlers)} команд")
+        await safe_edit(event, f"{CE.CHECK} {len(bot.module_manager.modules)} {S('reloaded', bot)} | {len(bot._command_handlers)} {S('commands', bot)}")
 
     async def cmd_eval(event):
         a = event.raw_text.split(maxsplit=1)
@@ -1654,7 +1949,8 @@ def load_core_module(bot: "Userbot"):
             return
         try:
             r = eval(a[1])
-            if asyncio.iscoroutine(r): r = await r
+            if asyncio.iscoroutine(r):
+                r = await r
             await safe_edit(event, truncate(f"💻\n<pre>{html_escape(str(r))}</pre>"))
         except Exception as e:
             await safe_edit(event, f"{CE.CROSS}\n<pre>{html_escape(str(e))}</pre>")
@@ -1682,19 +1978,19 @@ def load_core_module(bot: "Userbot"):
             await safe_edit(event, f"{CE.WARN} <code>{p}settoken &lt;token&gt;</code>")
             return
         me = await bot.inline_panel.inline_bot.get_me()
-        await safe_edit(event, f"{CE.GEAR} <code>@{me.username} </code> в любом чате")
+        await safe_edit(event, f"{CE.GEAR} <code>@{me.username} </code>")
 
     async def cmd_settoken(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
             s = "✅" if bot.inline_panel.active else "❌"
-            await safe_edit(event, f"{CE.BOT} Inline: {s}\n<code>{p}settoken &lt;token/remove&gt;</code>")
+            await safe_edit(event, f"{CE.BOT} {S('inline_word', bot)}: {s}\n<code>{p}settoken &lt;token/remove&gt;</code>")
             return
         tok = a[1].strip()
         if tok.lower() == "remove":
             bot.config.set("bot_token", "")
             await bot.inline_panel.stop()
-            await safe_edit(event, f"{CE.CHECK} Удалён")
+            await safe_edit(event, f"{CE.CHECK} {S('deleted', bot)}")
             return
         await safe_edit(event, f"{CE.RELOAD} ...")
         bot.config.set("bot_token", tok)
@@ -1703,7 +1999,7 @@ def load_core_module(bot: "Userbot"):
             await safe_edit(event, f"{CE.CHECK} @{me.username}")
         else:
             bot.config.set("bot_token", "")
-            await safe_edit(event, f"{CE.CROSS} Невалидный токен")
+            await safe_edit(event, f"{CE.CROSS} {S('settoken_invalid', bot)}")
 
     async def cmd_status(event):
         up = format_uptime(time.time() - bot.start_time)
@@ -1715,20 +2011,20 @@ def load_core_module(bot: "Userbot"):
             f"{CE.CHART} <b>{BRAND_NAME}</b> v{BRAND_VERSION}\n━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"{CE.USER} {html_escape(me.first_name)} <code>{me.id}</code>\n{CE.CLOCK} <b>{up}</b>\n"
             f"{CE.PACKAGE} {tm} ({CE.BLUE}{tm - um} {CE.GREEN}{um})\n{CE.WRENCH} {len(bot._command_handlers)}\n"
-            f"{CE.STATS} {st.get('commands_used', 0)} выполнено\n"
+            f"{CE.STATS} {st.get('commands_used', 0)} {S('executed', bot)}\n"
             f"{CE.KEY} <code>{html_escape(bot.config.prefix)}</code> | {CE.PYTHON} <code>{platform.python_version()}</code>\n"
             f"{CE.SIGNAL} <code>{telethon_version.__version__}</code> | {CE.PC} {platform.system()}\n"
-            f"{CE.BOT} Inline: {'✅' if bot.inline_panel.active else '❌'}"
+            f"{CE.BOT} {S('inline_word', bot)}: {'✅' if bot.inline_panel.active else '❌'}"
         )
 
     async def cmd_im(event):
         if not event.is_reply:
             await safe_edit(event,
-                f"{CE.DOWNLOAD} Ответьте на <code>.py</code> файл: <code>{p}im</code>\nИли: <code>{p}dlm &lt;url&gt;</code>")
+                f"{CE.DOWNLOAD} {S('install_reply_hint', bot)}: <code>{p}dlm &lt;url&gt;</code>")
             return
         reply = await event.get_reply_message()
         if not reply.document:
-            await safe_edit(event, f"{CE.CROSS} Нет файла")
+            await safe_edit(event, f"{CE.CROSS} {S('no_file', bot)}")
             return
         fn = None
         for attr in reply.document.attributes:
@@ -1737,7 +2033,7 @@ def load_core_module(bot: "Userbot"):
         if not fn:
             fn = f"mod_{int(time.time())}.py"
         if not fn.endswith(".py"):
-            await safe_edit(event, f"{CE.CROSS} Только .py")
+            await safe_edit(event, f"{CE.CROSS} {S('only_py', bot)}")
             return
         await safe_edit(event, f"{CE.DOWNLOAD} <code>{html_escape(fn)}</code>...")
         try:
@@ -1752,7 +2048,7 @@ def load_core_module(bot: "Userbot"):
             missing = [r for r in reqs if not is_package_installed(r)]
             if missing:
                 await safe_edit(event,
-                    f"{CE.DOWNLOAD} <code>{html_escape(fn)}</code>\n{CE.PACKAGE} Установка зависимостей: <code>{', '.join(missing)}</code>..."
+                    f"{CE.DOWNLOAD} <code>{html_escape(fn)}</code>\n{CE.PACKAGE} {S('install_deps', bot)}: <code>{', '.join(missing)}</code>..."
                 )
 
         ok, res = bot.module_manager.install_from_file(fn, content)
@@ -1762,12 +2058,13 @@ def load_core_module(bot: "Userbot"):
             cc = len(m.commands) if m else 0
             cl = ""
             if m and m.commands:
-                cl = "\n\n<b>Команды:</b>\n" + "".join(
+                cmds_label = S('commands', bot)
+                cl = f"\n\n<b>{cmds_label}:</b>\n" + "".join(
                     f"  <code>{html_escape(p + c)}</code> — {html_escape(cmd.description)}\n" for c, cmd in m.commands.items()
                 )
             sc = ""
             if m and m.settings_schema:
-                sc = f"\n{CE.GEAR} {len(m.settings_schema)} настроек"
+                sc = f"\n{CE.GEAR} {len(m.settings_schema)} {S('panel_settings_count', bot)}"
             deps_lines = "\n".join(res.split("\n")[1:]) if "\n" in res else ""
             await safe_edit(event, f"{CE.CHECK} <b>{html_escape(mod_name)}</b> | {CE.WRENCH} {cc} cmd{cl}{sc}\n{deps_lines}")
         else:
@@ -1778,16 +2075,16 @@ def load_core_module(bot: "Userbot"):
         if len(a) < 2:
             um = bot.module_manager.get_user_modules()
             if not um:
-                await safe_edit(event, f"{CE.EMPTY} Нет польз. модулей")
+                await safe_edit(event, f"{CE.EMPTY} {S('install_no_user_mods', bot)}")
                 return
-            t = f"{CE.TRASH} <code>{p}um &lt;имя&gt;</code>\n\n"
+            t = f"{CE.TRASH} <code>{p}um &lt;name&gt;</code>\n\n"
             for n, m in um.items():
                 t += f"  {CE.GREEN} <code>{html_escape(n)}</code> — {html_escape(m.description)}\n"
             await safe_edit(event, t)
             return
         mn = a[1].strip().lower()
         if bot.module_manager.is_builtin(mn):
-            await safe_edit(event, f"{CE.CROSS} Встроенный!")
+            await safe_edit(event, f"{CE.CROSS} {S('builtin_module', bot)}!")
             return
         ok, msg = bot.module_manager.uninstall_module(mn)
         await safe_edit(event, f"{CE.CHECK if ok else CE.CROSS} {html_escape(msg)}")
@@ -1795,13 +2092,13 @@ def load_core_module(bot: "Userbot"):
     async def cmd_dlm(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
-            await safe_edit(event, f"{CE.GLOBE} <code>{p}dlm &lt;url&gt;</code>\nGitHub, Gist, прямые .py ссылки")
+            await safe_edit(event, f"{CE.GLOBE} <code>{p}dlm &lt;url&gt;</code>\nGitHub, Gist, .py URLs")
             return
         url = a[1].strip()
         if not url.startswith(("http://", "https://")):
             await safe_edit(event, f"{CE.CROSS} http(s)://")
             return
-        await safe_edit(event, f"{CE.GLOBE} Скачиваю...")
+        await safe_edit(event, f"{CE.GLOBE} {S('install_downloading', bot)}")
         ok, res = await bot.module_manager.install_from_url(url)
         if ok:
             mod_name = res.split("\n")[0]
@@ -1809,7 +2106,8 @@ def load_core_module(bot: "Userbot"):
             cc = len(m.commands) if m else 0
             cl = ""
             if m and m.commands:
-                cl = "\n\n<b>Команды:</b>\n" + "".join(
+                cmds_label = S('commands', bot)
+                cl = f"\n\n<b>{cmds_label}:</b>\n" + "".join(
                     f"  <code>{html_escape(p + c)}</code> — {html_escape(cmd.description)}\n" for c, cmd in m.commands.items()
                 )
             deps_lines = "\n".join(res.split("\n")[1:]) if "\n" in res else ""
@@ -1820,7 +2118,7 @@ def load_core_module(bot: "Userbot"):
     async def cmd_lm(event):
         um = bot.module_manager.get_user_modules()
         inst = bot.config.get("installed_modules", {})
-        t = f"{CE.PLUG} <b>Пользовательские</b> ({len(um)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+        t = f"{CE.PLUG} <b>{S('user_modules', bot)}</b> ({len(um)})\n━━━━━━━━━━━━━━━━━━━━━\n\n"
         if not um:
             t += f"{CE.EMPTY} <code>{p}im</code> | <code>{p}dlm &lt;url&gt;</code>\n"
         else:
@@ -1838,20 +2136,20 @@ def load_core_module(bot: "Userbot"):
                     t += f"   └ <code>{html_escape(p + cn)}</code>\n"
                 if reqs:
                     t += f"   {CE.PACKAGE} <code>{', '.join(reqs)}</code>\n"
-            t += f"\n{CE.CHART} {len(um)} модулей, {tc} команд"
+            t += f"\n{CE.CHART} {len(um)} {S('modules', bot)}, {tc} {S('commands', bot)}"
         await safe_edit(event, truncate(t))
 
     async def cmd_pip(event):
         a = event.raw_text.split(maxsplit=2)
         if len(a) < 2:
             await safe_edit(event,
-                f"{CE.PACKAGE} <b>Управление пакетами</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"<code>{p}pip install &lt;pkg&gt;</code> — установить\n"
-                f"<code>{p}pip uninstall &lt;pkg&gt;</code> — удалить\n"
-                f"<code>{p}pip check &lt;pkg&gt;</code> — проверить\n"
-                f"<code>{p}pip search &lt;pkg&gt;</code> — версия пакета\n"
-                f"<code>{p}pip list</code> — установленные (pip list)\n"
-                f"<code>{p}pip deps &lt;модуль&gt;</code> — зависимости модуля\n"
+                f"{CE.PACKAGE} <b>{S('pkg_manage', bot)}</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"<code>{p}pip install &lt;pkg&gt;</code> — {S('pip_install_word', bot)}\n"
+                f"<code>{p}pip uninstall &lt;pkg&gt;</code> — {S('pip_uninstall_word', bot)}\n"
+                f"<code>{p}pip check &lt;pkg&gt;</code> — {S('pip_check_word', bot)}\n"
+                f"<code>{p}pip search &lt;pkg&gt;</code> — {S('pip_version_word', bot)}\n"
+                f"<code>{p}pip list</code> — {S('pip_installed_word', bot)}\n"
+                f"<code>{p}pip deps &lt;mod&gt;</code> — {S('pip_deps_word', bot)}\n"
             )
             return
 
@@ -1863,12 +2161,12 @@ def load_core_module(bot: "Userbot"):
                 return
             pkg = a[2].strip()
             if is_package_installed(pkg):
-                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(pkg)}</code> уже установлен")
+                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(pkg)}</code> {S('pip_already_installed', bot)}")
                 return
-            await safe_edit(event, f"{CE.DOWNLOAD} Устанавливаю <code>{html_escape(pkg)}</code>...")
+            await safe_edit(event, f"{CE.DOWNLOAD} {S('pip_installing', bot)} <code>{html_escape(pkg)}</code>...")
             ok, msg = await async_install_pip_package(pkg)
             if ok:
-                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(pkg)}</code> установлен!")
+                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(pkg)}</code> {S('installed', bot)}!")
             else:
                 await safe_edit(event, f"{CE.CROSS} {html_escape(msg)}")
 
@@ -1877,10 +2175,10 @@ def load_core_module(bot: "Userbot"):
                 await safe_edit(event, f"{CE.CROSS} <code>{p}pip uninstall &lt;pkg&gt;</code>")
                 return
             pkg = a[2].strip()
-            await safe_edit(event, f"{CE.TRASH} Удаляю <code>{html_escape(pkg)}</code>...")
+            await safe_edit(event, f"{CE.TRASH} {S('pip_removing', bot)} <code>{html_escape(pkg)}</code>...")
             ok, msg = uninstall_pip_package(pkg)
             if ok:
-                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(pkg)}</code> удалён")
+                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(pkg)}</code> {S('removed', bot)}")
             else:
                 await safe_edit(event, f"{CE.CROSS} {html_escape(msg)}")
 
@@ -1889,10 +2187,10 @@ def load_core_module(bot: "Userbot"):
                 await safe_edit(event, f"{CE.CROSS} <code>{p}pip check &lt;pkg&gt;</code>")
                 return
             pkg = a[2].strip()
-            installed = is_package_installed(pkg)
-            status = "✅ установлен" if installed else "❌ не установлен"
+            inst = is_package_installed(pkg)
+            status = f"✅ {S('installed', bot)}" if inst else f"❌ {S('not_found', bot)}"
             ver = ""
-            if installed:
+            if inst:
                 try:
                     from importlib.metadata import version as get_version
                     base = re.split(r'[><=!~]', pkg)[0].strip()
@@ -1918,10 +2216,10 @@ def load_core_module(bot: "Userbot"):
                     f"📝 {html_escape(summary)}\n{CE.USER} {html_escape(author)}"
                 )
             except Exception:
-                await safe_edit(event, f"{CE.CROSS} <code>{html_escape(pkg)}</code> не найден или не установлен")
+                await safe_edit(event, f"{CE.CROSS} <code>{html_escape(pkg)}</code> {S('pip_not_found', bot)}")
 
         elif sub == "list":
-            await safe_edit(event, f"{CE.PACKAGE} Загрузка...")
+            await safe_edit(event, f"{CE.PACKAGE} {S('loading', bot)}")
             try:
                 proc = await asyncio.create_subprocess_exec(
                     sys.executable, "-m", "pip", "list", "--format=columns",
@@ -1932,14 +2230,14 @@ def load_core_module(bot: "Userbot"):
                 lines = output.split("\n")
                 count = max(0, len(lines) - 2)
                 if len(output) > 3500:
-                    output = "\n".join(lines[:50]) + f"\n\n... и ещё {count - 48} пакетов"
-                await safe_edit(event, f"{CE.PACKAGE} <b>Пакеты</b> ({count}):\n<pre>{html_escape(output)}</pre>")
+                    output = "\n".join(lines[:50]) + f"\n\n... +{count - 48}"
+                await safe_edit(event, f"{CE.PACKAGE} <b>{S('pip_packages', bot)}</b> ({count}):\n<pre>{html_escape(output)}</pre>")
             except Exception as e:
                 await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
         elif sub == "deps":
             if len(a) < 3:
-                await safe_edit(event, f"{CE.CROSS} <code>{p}pip deps &lt;модуль&gt;</code>")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}pip deps &lt;mod&gt;</code>")
                 return
             mod_name = a[2].strip().lower()
             mod_obj = bot.module_manager.modules.get(mod_name)
@@ -1954,9 +2252,10 @@ def load_core_module(bot: "Userbot"):
                     content = fp.read_text(encoding="utf-8", errors="replace")
                     reqs = parse_module_requirements(content)
             if not reqs:
-                await safe_edit(event, f"{CE.PACKAGE} <code>{html_escape(mod_name)}</code>: зависимостей нет")
+                await safe_edit(event, f"{CE.PACKAGE} <code>{html_escape(mod_name)}</code>: {S('pip_no_deps', bot)}")
                 return
-            t = f"{CE.PACKAGE} <b>{html_escape(mod_name)}</b> — зависимости:\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+            deps_label = S('panel_dependencies', bot)
+            t = f"{CE.PACKAGE} <b>{html_escape(mod_name)}</b> — {deps_label}:\n━━━━━━━━━━━━━━━━━━━━━\n\n"
             for r in reqs:
                 installed = is_package_installed(r)
                 icon = "✅" if installed else "❌"
@@ -1972,21 +2271,19 @@ def load_core_module(bot: "Userbot"):
             await safe_edit(event, t)
 
         else:
-            await safe_edit(event, f"{CE.CROSS} Неизвестная подкоманда: <code>{html_escape(sub)}</code>")
+            await safe_edit(event, f"{CE.CROSS} {S('pip_unknown_sub', bot)}: <code>{html_escape(sub)}</code>")
 
     async def cmd_fcfg(event):
         args = event.raw_text.split()
         if len(args) < 2:
             t = (
-                f"{CE.GEAR} <b>Управление настройками модулей</b>\n"
+                f"{CE.GEAR} <b>{S('fcfg_manage', bot)}</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"<code>{p}fcfg set -m &lt;модуль&gt; &lt;параметр&gt; &lt;значение&gt;</code> — установить\n"
-                f"<code>{p}fcfg remove -m &lt;модуль&gt; &lt;параметр&gt;</code> — удалить\n"
-                f"<code>{p}fcfg reset -m &lt;модуль&gt;</code> — сбросить все настройки модуля\n\n"
-                f"<b>Пример:</b>\n"
-                f"<code>{p}fcfg set -m mymod greeting Привет!</code>\n"
-                f"<code>{p}fcfg remove -m mymod greeting</code>\n"
-                f"<code>{p}fcfg reset -m mymod</code>\n"
+                f"<code>{p}fcfg set -m &lt;mod&gt; &lt;param&gt; &lt;value&gt;</code> — {S('fcfg_set', bot)}\n"
+                f"<code>{p}fcfg remove -m &lt;mod&gt; &lt;param&gt;</code> — {S('fcfg_remove', bot)}\n"
+                f"<code>{p}fcfg reset -m &lt;mod&gt;</code> — {S('fcfg_reset', bot)}\n\n"
+                f"<b>{S('fcfg_example', bot)}:</b>\n"
+                f"<code>{p}fcfg set -m mymod greeting Hello!</code>\n"
             )
             await safe_edit(event, t)
             return
@@ -1994,16 +2291,19 @@ def load_core_module(bot: "Userbot"):
         action = args[1].lower()
 
         if action not in ("set", "remove", "reset"):
-            await safe_edit(event, f"{CE.CROSS} Неизвестный аргумент: <code>{html_escape(action)}</code>\nДопустимо: <code>set</code>, <code>remove</code>, <code>reset</code>")
+            await safe_edit(event,
+                f"{CE.CROSS} {S('fcfg_unknown_action', bot)}: <code>{html_escape(action)}</code>\n"
+                f"{S('fcfg_allowed', bot)}: <code>set</code>, <code>remove</code>, <code>reset</code>"
+            )
             return
 
         if "-m" not in args:
-            await safe_edit(event, f"{CE.CROSS} Укажите модуль: <code>-m &lt;название_модуля&gt;</code>")
+            await safe_edit(event, f"{CE.CROSS} {S('fcfg_specify_module', bot)}: <code>-m &lt;module&gt;</code>")
             return
 
         m_index = args.index("-m")
         if m_index + 1 >= len(args):
-            await safe_edit(event, f"{CE.CROSS} После <code>-m</code> укажите название модуля")
+            await safe_edit(event, f"{CE.CROSS} {S('fcfg_after_m', bot)}")
             return
 
         mod_name = args[m_index + 1]
@@ -2018,7 +2318,10 @@ def load_core_module(bot: "Userbot"):
 
         if not mod_obj:
             available = ", ".join(f"<code>{html_escape(n)}</code>" for n in bot.module_manager.modules)
-            await safe_edit(event, f"{CE.CROSS} Модуль <code>{html_escape(mod_name)}</code> не найден\n\n{CE.PACKAGE} Доступные: {available}")
+            await safe_edit(event,
+                f"{CE.CROSS} {S('fcfg_module_not_found', bot)} <code>{html_escape(mod_name)}</code>\n\n"
+                f"{CE.PACKAGE} {S('fcfg_available', bot)}: {available}"
+            )
             return
 
         remaining = args[m_index + 2:]
@@ -2026,7 +2329,8 @@ def load_core_module(bot: "Userbot"):
         if action == "set":
             if len(remaining) < 2:
                 if mod_obj.settings_schema:
-                    t = f"{CE.GEAR} <b>Настройки <code>{html_escape(mod_name)}</code>:</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    settings_label = S('fcfg_settings_of', bot)
+                    t = f"{CE.GEAR} <b>{settings_label} <code>{html_escape(mod_name)}</code>:</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
                     custom = bot.config.data.get("custom_settings", {})
                     for s in mod_obj.settings_schema:
                         fk = f"{mod_name}.{s['key']}"
@@ -2038,13 +2342,12 @@ def load_core_module(bot: "Userbot"):
                             t += f"    📝 {html_escape(s['label'])}\n"
                         if desc:
                             t += f"    ℹ️ <i>{html_escape(desc)}</i>\n"
-                    t += f"\n{CE.BULB} <code>{p}fcfg set -m {html_escape(mod_name)} &lt;параметр&gt; &lt;значение&gt;</code>"
+                    t += f"\n{CE.BULB} <code>{p}fcfg set -m {html_escape(mod_name)} &lt;param&gt; &lt;value&gt;</code>"
                     await safe_edit(event, t)
                 else:
                     await safe_edit(event,
-                        f"{CE.CROSS} <code>{p}fcfg set -m {html_escape(mod_name)} &lt;параметр&gt; &lt;значение&gt;</code>\n\n"
-                        f"{CE.WARN} У модуля <code>{html_escape(mod_name)}</code> нет объявленных настроек (settings_schema),\n"
-                        f"но вы всё равно можете задать произвольный параметр."
+                        f"{CE.CROSS} <code>{p}fcfg set -m {html_escape(mod_name)} &lt;param&gt; &lt;value&gt;</code>\n\n"
+                        f"{CE.WARN} {S('fcfg_no_schema', bot)}, {S('fcfg_arbitrary', bot)}."
                     )
                 return
 
@@ -2057,7 +2360,7 @@ def load_core_module(bot: "Userbot"):
                 value = " ".join(remaining[1:])
 
             if not value:
-                await safe_edit(event, f"{CE.CROSS} Укажите значение: <code>{p}fcfg set -m {html_escape(mod_name)} {html_escape(param)} &lt;значение&gt;</code>")
+                await safe_edit(event, f"{CE.CROSS} {S('fcfg_specify_value', bot)}")
                 return
 
             schema_entry = None
@@ -2077,12 +2380,14 @@ def load_core_module(bot: "Userbot"):
                     elif stype == "bool":
                         if value.lower() not in ("true", "false", "1", "0", "yes", "no", "да", "нет", "on", "off"):
                             await safe_edit(event,
-                                f"{CE.CROSS} Параметр <code>{html_escape(param)}</code> имеет тип <code>bool</code>\n"
-                                f"Допустимые значения: <code>true/false</code>, <code>1/0</code>, <code>yes/no</code>, <code>on/off</code>"
+                                f"{CE.CROSS} <code>{html_escape(param)}</code> — <code>bool</code>\n"
+                                f"{S('fcfg_bool_values', bot)}: <code>true/false</code>, <code>1/0</code>, <code>yes/no</code>, <code>on/off</code>"
                             )
                             return
                 except ValueError:
-                    await safe_edit(event, f"{CE.CROSS} Параметр <code>{html_escape(param)}</code> должен быть типа <code>{stype}</code>, получено: <code>{html_escape(value)}</code>")
+                    await safe_edit(event,
+                        f"{CE.CROSS} <code>{html_escape(param)}</code> {S('fcfg_type_mismatch', bot)} <code>{stype}</code>"
+                    )
                     return
 
             module_config_set(bot, mod_name, param, value)
@@ -2093,13 +2398,17 @@ def load_core_module(bot: "Userbot"):
                 label = f" ({html_escape(schema_entry['label'])})"
 
             if saved == value:
-                await safe_edit(event, f"{CE.CHECK} <code>{html_escape(mod_name)}.{html_escape(param)}</code>{label} = <code>{html_escape(value)}</code>")
+                await safe_edit(event,
+                    f"{CE.CHECK} <code>{html_escape(mod_name)}.{html_escape(param)}</code>{label} = <code>{html_escape(value)}</code>"
+                )
             else:
-                await safe_edit(event, f"{CE.WARN} Ошибка сохранения <code>{html_escape(mod_name)}.{html_escape(param)}</code>")
+                await safe_edit(event,
+                    f"{CE.WARN} {S('fcfg_save_error', bot)} <code>{html_escape(mod_name)}.{html_escape(param)}</code>"
+                )
 
         elif action == "remove":
             if len(remaining) < 1:
-                await safe_edit(event, f"{CE.CROSS} <code>{p}fcfg remove -m {html_escape(mod_name)} &lt;параметр&gt;</code>")
+                await safe_edit(event, f"{CE.CROSS} <code>{p}fcfg remove -m {html_escape(mod_name)} &lt;param&gt;</code>")
                 return
 
             param = remaining[0]
@@ -2107,7 +2416,7 @@ def load_core_module(bot: "Userbot"):
             custom = dict(bot.config.data.get("custom_settings", {}))
 
             if full_key not in custom:
-                await safe_edit(event, f"{CE.CROSS} Параметр <code>{html_escape(full_key)}</code> не установлен в custom_settings")
+                await safe_edit(event, f"{CE.CROSS} <code>{html_escape(full_key)}</code> {S('fcfg_not_set', bot)}")
                 return
 
             del custom[full_key]
@@ -2121,9 +2430,9 @@ def load_core_module(bot: "Userbot"):
                         default_val = s.get("default")
                         break
 
-            msg = f"{CE.CHECK} Параметр <code>{html_escape(full_key)}</code> удалён из настроек"
+            msg = f"{CE.CHECK} {S('fcfg_param_removed', bot)} <code>{html_escape(full_key)}</code>"
             if default_val is not None:
-                msg += f"\n{CE.FILE} Значение по умолчанию: <code>{html_escape(str(default_val))}</code>"
+                msg += f"\n{CE.FILE} {S('fcfg_default_value', bot)}: <code>{html_escape(str(default_val))}</code>"
             await safe_edit(event, msg)
 
         elif action == "reset":
@@ -2132,7 +2441,9 @@ def load_core_module(bot: "Userbot"):
             keys_to_remove = [k for k in custom if k.startswith(prefix_key)]
 
             if not keys_to_remove:
-                await safe_edit(event, f"ℹ️ У модуля <code>{html_escape(mod_name)}</code> нет пользовательских настроек для сброса")
+                await safe_edit(event,
+                    f"ℹ️ {S('fcfg_no_custom', bot)} <code>{html_escape(mod_name)}</code>"
+                )
                 return
 
             for k in keys_to_remove:
@@ -2142,30 +2453,32 @@ def load_core_module(bot: "Userbot"):
             bot.config.save()
 
             await safe_edit(event,
-                f"{CE.CHECK} Сброшено <b>{len(keys_to_remove)}</b> настроек модуля <code>{html_escape(mod_name)}</code>:\n"
+                f"{CE.CHECK} {S('fcfg_reset_done', bot)} <b>{len(keys_to_remove)}</b> "
+                f"{S('fcfg_settings_of_module', bot)} <code>{html_escape(mod_name)}</code>:\n"
                 + "\n".join(f"  {CE.TRASH} <code>{html_escape(k)}</code>" for k in keys_to_remove)
             )
 
     mod.commands = {
-        "alive": Command("alive", cmd_alive, "Проверка", "core", f"{p}alive"),
-        "kinfo": Command("kinfo", cmd_kinfo, "Инфо-карточка", "core", f"{p}kinfo"),
-        "kset": Command("kset", cmd_kset, "Настройки kinfo", "core", f"{p}kset <sub>"),
-        "help": Command("help", cmd_help, "Помощь", "core", f"{p}help [cmd]"),
-        "ping": Command("ping", cmd_ping, "Пинг", "core", f"{p}ping"),
-        "prefix": Command("prefix", cmd_prefix, "Префикс", "core", f"{p}prefix <new>"),
-        "modules": Command("modules", cmd_modules, "Модули", "core", f"{p}modules"),
-        "reload": Command("reload", cmd_reload, "Перезагрузка", "core", f"{p}reload"),
+        "alive": Command("alive", cmd_alive, S("check", bot), "core", f"{p}alive"),
+        "kinfo": Command("kinfo", cmd_kinfo, S("info_card", bot), "core", f"{p}kinfo"),
+        "kset": Command("kset", cmd_kset, S("kinfo_settings", bot), "core", f"{p}kset <sub>"),
+        "help": Command("help", cmd_help, S("help_word", bot), "core", f"{p}help [cmd]"),
+        "ping": Command("ping", cmd_ping, S("ping_word", bot), "core", f"{p}ping"),
+        "prefix": Command("prefix", cmd_prefix, S("prefix_word", bot), "core", f"{p}prefix <new>"),
+        "lang": Command("lang", cmd_lang, S("lang_cmd_desc", bot), "core", f"{p}lang <ru/en/uk>"),
+        "modules": Command("modules", cmd_modules, S("modules_list", bot), "core", f"{p}modules"),
+        "reload": Command("reload", cmd_reload, S("reloading", bot), "core", f"{p}reload"),
         "eval": Command("eval", cmd_eval, "Eval", "core", f"{p}eval <code>"),
         "exec": Command("exec", cmd_exec, "Exec", "core", f"{p}exec <code>"),
-        "settings": Command("settings", cmd_settings, "Inline панель", "core", f"{p}settings"),
-        "settoken": Command("settoken", cmd_settoken, "Bot token", "core", f"{p}settoken"),
-        "status": Command("status", cmd_status, "Статус", "core", f"{p}status"),
-        "im": Command("im", cmd_im, "Установить (файл)", "core", f"{p}im"),
-        "um": Command("um", cmd_um, "Удалить модуль", "core", f"{p}um <name>"),
-        "dlm": Command("dlm", cmd_dlm, "Скачать (URL)", "core", f"{p}dlm <url>"),
-        "lm": Command("lm", cmd_lm, "Польз. модули", "core", f"{p}lm"),
-        "pip": Command("pip", cmd_pip, "Управление пакетами", "core", f"{p}pip <sub>"),
-        "fcfg": Command("fcfg", cmd_fcfg, "Настройки модулей", "core", f"{p}fcfg <set/remove/reset> -m <module> [param] [value]"),
+        "settings": Command("settings", cmd_settings, S("inline_panel", bot), "core", f"{p}settings"),
+        "settoken": Command("settoken", cmd_settoken, S("bot_token", bot), "core", f"{p}settoken"),
+        "status": Command("status", cmd_status, S("status_word", bot), "core", f"{p}status"),
+        "im": Command("im", cmd_im, S("install_file", bot), "core", f"{p}im"),
+        "um": Command("um", cmd_um, S("uninstall_mod", bot), "core", f"{p}um <name>"),
+        "dlm": Command("dlm", cmd_dlm, S("download_url", bot), "core", f"{p}dlm <url>"),
+        "lm": Command("lm", cmd_lm, S("user_modules", bot), "core", f"{p}lm"),
+        "pip": Command("pip", cmd_pip, S("pkg_manage", bot), "core", f"{p}pip <sub>"),
+        "fcfg": Command("fcfg", cmd_fcfg, S("mod_settings", bot), "core", f"{p}fcfg <set/remove/reset> -m <mod> [param] [value]"),
     }
 
     bot.module_manager.register_module(mod)
@@ -2174,7 +2487,7 @@ def load_core_module(bot: "Userbot"):
 
 
 def load_tools_module(bot: "Userbot"):
-    mod = Module(name="tools", description="Инструменты", author=BRAND_NAME, version="1.0")
+    mod = Module(name="tools", description=S("tools_word", bot), author=BRAND_NAME, version="1.0")
     p = bot.config.prefix
 
     async def cmd_id(event):
@@ -2201,7 +2514,7 @@ def load_tools_module(bot: "Userbot"):
                 try:
                     uid = (await bot.client.get_entity(a[1].strip())).id
                 except Exception:
-                    await safe_edit(event, f"{CE.CROSS} Не найден")
+                    await safe_edit(event, f"{CE.CROSS} {S('not_found', bot)}")
                     return
             else:
                 uid = event.sender_id
@@ -2212,10 +2525,10 @@ def load_tools_module(bot: "Userbot"):
             await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
             return
         t = (
-            f"{CE.USER} <b>Инфо</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"{CE.USER} <b>{S('info_word', bot)}</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
             f"📛 {html_escape(u.first_name or '')} {html_escape(u.last_name or '')}\n{CE.ID} <code>{u.id}</code>\n"
-            f"📱 @{u.username or '—'}\n{CE.BOT} {'Да' if u.bot else 'Нет'}\n"
-            f"{CE.STAR} {'Да' if getattr(u, 'premium', False) else 'Нет'}\n"
+            f"📱 @{u.username or '—'}\n{CE.BOT} {S('yes', bot) if u.bot else S('no', bot)}\n"
+            f"{CE.STAR} {S('yes', bot) if getattr(u, 'premium', False) else S('no', bot)}\n"
         )
         if fu.about:
             t += f"📝 <i>{html_escape(fu.about)}</i>\n"
@@ -2233,7 +2546,7 @@ def load_tools_module(bot: "Userbot"):
 
     async def cmd_purge(event):
         if not event.is_reply:
-            await safe_edit(event, f"{CE.CROSS} Reply")
+            await safe_edit(event, f"{CE.CROSS} {S('reply_needed', bot)}")
             return
         r = await event.get_reply_message()
         c = 0
@@ -2251,7 +2564,7 @@ def load_tools_module(bot: "Userbot"):
     async def cmd_chatinfo(event):
         ch = await event.get_chat()
         if isinstance(ch, User):
-            await safe_edit(event, f"{CE.CROSS} Не чат")
+            await safe_edit(event, f"{CE.CROSS} {S('not_chat', bot)}")
             return
         t = f"{CE.CHAT} <b>{html_escape(ch.title)}</b>\n━━━━━━━━━━━━━━━━━━━━━\n{CE.ID} <code>{ch.id}</code>\n"
         if hasattr(ch, "username") and ch.username:
@@ -2264,7 +2577,7 @@ def load_tools_module(bot: "Userbot"):
                     t += f"📝 <i>{html_escape(fc.about[:80])}</i>\n"
             except Exception:
                 pass
-            t += f"📢 {'Канал' if ch.broadcast else 'Супергруппа'}\n"
+            t += f"📢 {S('channel_word', bot) if ch.broadcast else S('supergroup', bot)}\n"
         await safe_edit(event, t)
 
     async def cmd_calc(event):
@@ -2274,7 +2587,7 @@ def load_tools_module(bot: "Userbot"):
             return
         expr = a[1].strip()
         if not all(c in "0123456789+-*/().% " for c in expr):
-            await safe_edit(event, f"{CE.CROSS} Недопустимые символы!")
+            await safe_edit(event, f"{CE.CROSS} {S('invalid_chars', bot)}")
             return
         try:
             await safe_edit(event, f"{CE.CALC} <code>{html_escape(expr)}</code> = <b>{eval(expr)}</b>")
@@ -2284,16 +2597,16 @@ def load_tools_module(bot: "Userbot"):
     async def cmd_sd(event):
         a = event.raw_text.split(maxsplit=1)
         if len(a) < 2:
-            await safe_edit(event, f"{CE.CROSS} <code>{p}sd &lt;сек&gt; &lt;текст&gt;</code>")
+            await safe_edit(event, f"{CE.CROSS} <code>{p}sd &lt;sec&gt; &lt;text&gt;</code>")
             return
         pts = a[1].split(maxsplit=1)
         try:
             delay = int(pts[0])
             txt = pts[1] if len(pts) > 1 else "💨"
         except (ValueError, IndexError):
-            await safe_edit(event, f"{CE.CROSS} <code>{p}sd &lt;сек&gt; &lt;текст&gt;</code>")
+            await safe_edit(event, f"{CE.CROSS} <code>{p}sd &lt;sec&gt; &lt;text&gt;</code>")
             return
-        await safe_edit(event, f"{html_escape(txt)}\n{CE.CLOCK} ~{delay}с")
+        await safe_edit(event, f"{html_escape(txt)}\n{CE.CLOCK} ~{delay}s")
         await asyncio.sleep(delay)
         await event.delete()
 
@@ -2307,19 +2620,25 @@ def load_tools_module(bot: "Userbot"):
         rs = []
         async for m in bot.client.iter_messages(event.chat_id, search=q, limit=10):
             s = await m.get_sender()
-            rs.append(f"  <code>{m.id}</code> <b>{html_escape(s.first_name if s else '?')}</b>: <i>{html_escape((m.text or '[медиа]')[:35])}</i>")
-        t = f"{CE.SEARCH} <code>{html_escape(q)}</code>\n━━━━━━━━━━━━━━━━━━━━━\n\n" + ("\n".join(rs) if rs else "Ничего")
+            rs.append(
+                f"  <code>{m.id}</code> <b>{html_escape(s.first_name if s else '?')}</b>: "
+                f"<i>{html_escape((m.text or '[media]')[:35])}</i>"
+            )
+        t = (
+            f"{CE.SEARCH} <code>{html_escape(q)}</code>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
+            + ("\n".join(rs) if rs else S("nothing_found", bot))
+        )
         await safe_edit(event, truncate(t))
 
     mod.commands = {
-        "id": Command("id", cmd_id, "ID", "tools", f"{p}id"),
-        "info": Command("info", cmd_info, "Инфо", "tools", f"{p}info"),
-        "del": Command("del", cmd_del, "Удалить", "tools", f"{p}del"),
-        "purge": Command("purge", cmd_purge, "Purge", "tools", f"{p}purge"),
-        "chatinfo": Command("chatinfo", cmd_chatinfo, "Чат инфо", "tools", f"{p}chatinfo"),
-        "calc": Command("calc", cmd_calc, "Калькулятор", "tools", f"{p}calc"),
-        "sd": Command("sd", cmd_sd, "Самоуничтожение", "tools", f"{p}sd <с> <txt>"),
-        "search": Command("search", cmd_search, "Поиск", "tools", f"{p}search <q>"),
+        "id": Command("id", cmd_id, S("id_word", bot), "tools", f"{p}id"),
+        "info": Command("info", cmd_info, S("info_word", bot), "tools", f"{p}info"),
+        "del": Command("del", cmd_del, S("delete_word", bot), "tools", f"{p}del"),
+        "purge": Command("purge", cmd_purge, S("purge_word", bot), "tools", f"{p}purge"),
+        "chatinfo": Command("chatinfo", cmd_chatinfo, S("chat_info", bot), "tools", f"{p}chatinfo"),
+        "calc": Command("calc", cmd_calc, S("calculator", bot), "tools", f"{p}calc"),
+        "sd": Command("sd", cmd_sd, S("self_destruct", bot), "tools", f"{p}sd <s> <txt>"),
+        "search": Command("search", cmd_search, S("search_word", bot), "tools", f"{p}search <q>"),
     }
     bot.module_manager.register_module(mod)
     bot.module_manager.mark_builtin("tools")
@@ -2327,7 +2646,7 @@ def load_tools_module(bot: "Userbot"):
 
 
 def load_fun_module(bot: "Userbot"):
-    mod = Module(name="fun", description="Развлечения", author=BRAND_NAME, version="1.0")
+    mod = Module(name="fun", description=S("fun_word", bot), author=BRAND_NAME, version="1.0")
     p = bot.config.prefix
 
     async def _gt(event):
@@ -2377,7 +2696,7 @@ def load_fun_module(bot: "Userbot"):
         try:
             n = min(int(a[1]), 50)
         except ValueError:
-            await safe_edit(event, f"{CE.CROSS} Число!")
+            await safe_edit(event, f"{CE.CROSS} {S('number_required', bot)}")
             return
         await safe_edit(event, truncate(html_escape("\n".join([a[2]] * n))))
 
@@ -2410,7 +2729,10 @@ def load_fun_module(bot: "Userbot"):
 
     async def cmd_coin(event):
         import random
-        await safe_edit(event, random.choice([f"{CE.COIN} Орёл!", f"{CE.COIN} Решка!"]))
+        await safe_edit(event, random.choice([
+            f"{CE.COIN} {S('heads', bot)}",
+            f"{CE.COIN} {S('tails', bot)}"
+        ]))
 
     async def cmd_choose(event):
         import random
@@ -2420,29 +2742,29 @@ def load_fun_module(bot: "Userbot"):
             return
         opts = [o.strip() for o in a[1].split("|") if o.strip()]
         if not opts:
-            await safe_edit(event, f"{CE.CROSS} Пусто")
+            await safe_edit(event, f"{CE.CROSS} {S('empty', bot)}")
             return
         await safe_edit(event, f"{CE.TARGET} {html_escape(random.choice(opts))}")
 
     async def cmd_rate(event):
         import random
         a = event.raw_text.split(maxsplit=1)
-        thing = a[1] if len(a) > 1 else "это"
+        thing = a[1] if len(a) > 1 else "this"
         sc = random.randint(0, 100)
         bar = "█" * (sc // 10) + "░" * (10 - sc // 10)
         await safe_edit(event, f"{CE.CHART} <b>{html_escape(thing)}</b>\n[{bar}] {sc}%")
 
     mod.commands = {
-        "reverse": Command("reverse", cmd_reverse, "Реверс", "fun", f"{p}reverse"),
+        "reverse": Command("reverse", cmd_reverse, S("reverse_word", bot), "fun", f"{p}reverse"),
         "upper": Command("upper", cmd_upper, "UPPER", "fun", f"{p}upper"),
         "lower": Command("lower", cmd_lower, "lower", "fun", f"{p}lower"),
-        "mock": Command("mock", cmd_mock, "мОк", "fun", f"{p}mock"),
-        "repeat": Command("repeat", cmd_repeat, "Повтор", "fun", f"{p}repeat"),
-        "type": Command("type", cmd_type, "Печать", "fun", f"{p}type"),
-        "dice": Command("dice", cmd_dice, "Кубик", "fun", f"{p}dice"),
-        "coin": Command("coin", cmd_coin, "Монета", "fun", f"{p}coin"),
-        "choose": Command("choose", cmd_choose, "Выбор", "fun", f"{p}choose"),
-        "rate": Command("rate", cmd_rate, "Оценка", "fun", f"{p}rate"),
+        "mock": Command("mock", cmd_mock, "mOcK", "fun", f"{p}mock"),
+        "repeat": Command("repeat", cmd_repeat, S("repeat_word", bot), "fun", f"{p}repeat"),
+        "type": Command("type", cmd_type, S("typing_word", bot), "fun", f"{p}type"),
+        "dice": Command("dice", cmd_dice, S("dice_word", bot), "fun", f"{p}dice"),
+        "coin": Command("coin", cmd_coin, S("coin_word", bot), "fun", f"{p}coin"),
+        "choose": Command("choose", cmd_choose, S("choose_word", bot), "fun", f"{p}choose"),
+        "rate": Command("rate", cmd_rate, S("rate_word", bot), "fun", f"{p}rate"),
     }
     bot.module_manager.register_module(mod)
     bot.module_manager.mark_builtin("fun")
@@ -2450,12 +2772,12 @@ def load_fun_module(bot: "Userbot"):
 
 
 def load_admin_module(bot: "Userbot"):
-    mod = Module(name="admin", description="Администрирование", author=BRAND_NAME, version="1.0")
+    mod = Module(name="admin", description=S("admin_word", bot), author=BRAND_NAME, version="1.0")
     p = bot.config.prefix
 
     async def _admin_action(event, action_fn, success_msg):
         if not event.is_reply:
-            await safe_edit(event, f"{CE.CROSS} Reply")
+            await safe_edit(event, f"{CE.CROSS} {S('reply_needed', bot)}")
             return
         r = await event.get_reply_message()
         try:
@@ -2463,7 +2785,7 @@ def load_admin_module(bot: "Userbot"):
             u = await r.get_sender()
             await safe_edit(event, f"{success_msg} <b>{html_escape(u.first_name)}</b>!")
         except (UserAdminInvalidError, ChatAdminRequiredError):
-            await safe_edit(event, f"{CE.CROSS} Нет прав!")
+            await safe_edit(event, f"{CE.CROSS} {S('no_rights', bot)}")
         except Exception as e:
             await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
@@ -2490,7 +2812,7 @@ def load_admin_module(bot: "Userbot"):
 
     async def cmd_mute(event):
         if not event.is_reply:
-            await safe_edit(event, f"{CE.CROSS} Reply")
+            await safe_edit(event, f"{CE.CROSS} {S('reply_needed', bot)}")
             return
         r = await event.get_reply_message()
         a = event.raw_text.split(maxsplit=1)
@@ -2525,7 +2847,7 @@ def load_admin_module(bot: "Userbot"):
 
     async def cmd_pin(event):
         if not event.is_reply:
-            await safe_edit(event, f"{CE.CROSS} Reply")
+            await safe_edit(event, f"{CE.CROSS} {S('reply_needed', bot)}")
             return
         try:
             await bot.client.pin_message(event.chat_id, (await event.get_reply_message()).id)
@@ -2536,18 +2858,18 @@ def load_admin_module(bot: "Userbot"):
     async def cmd_unpin(event):
         try:
             await bot.client.unpin_message(event.chat_id)
-            await safe_edit(event, f"{CE.PIN} Откреплено")
+            await safe_edit(event, f"{CE.PIN} {S('unpinned', bot)}")
         except Exception as e:
             await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
     mod.commands = {
-        "ban": Command("ban", cmd_ban, "Бан", "admin", f"{p}ban"),
-        "unban": Command("unban", cmd_unban, "Разбан", "admin", f"{p}unban"),
-        "kick": Command("kick", cmd_kick, "Кик", "admin", f"{p}kick"),
-        "mute": Command("mute", cmd_mute, "Мут", "admin", f"{p}mute [time]"),
-        "unmute": Command("unmute", cmd_unmute, "Размут", "admin", f"{p}unmute"),
-        "pin": Command("pin", cmd_pin, "Пин", "admin", f"{p}pin"),
-        "unpin": Command("unpin", cmd_unpin, "Анпин", "admin", f"{p}unpin"),
+        "ban": Command("ban", cmd_ban, S("ban_word", bot), "admin", f"{p}ban"),
+        "unban": Command("unban", cmd_unban, S("unban_word", bot), "admin", f"{p}unban"),
+        "kick": Command("kick", cmd_kick, S("kick_word", bot), "admin", f"{p}kick"),
+        "mute": Command("mute", cmd_mute, S("mute_word", bot), "admin", f"{p}mute [time]"),
+        "unmute": Command("unmute", cmd_unmute, S("unmute_word", bot), "admin", f"{p}unmute"),
+        "pin": Command("pin", cmd_pin, S("pin_word", bot), "admin", f"{p}pin"),
+        "unpin": Command("unpin", cmd_unpin, S("unpin_word", bot), "admin", f"{p}unpin"),
     }
     bot.module_manager.register_module(mod)
     bot.module_manager.mark_builtin("admin")
@@ -2572,7 +2894,7 @@ class Userbot:
 
     async def build_kinfo_text(self, ping_start: float = None) -> str:
         ki = self.config.data.get("kinfo", {})
-        template = ki.get("template") or get_default_kinfo_template()
+        template = ki.get("template") or get_default_kinfo_template(self)
         emoji = ki.get("emoji", BRAND_EMOJI)
         if ping_start:
             ping = f"{(time.time() - ping_start) * 1000:.1f}"
@@ -2604,7 +2926,7 @@ class Userbot:
         try:
             text = template.format(**vars_dict)
         except (KeyError, IndexError, ValueError):
-            text = get_default_kinfo_template().format(**vars_dict)
+            text = get_default_kinfo_template(self).format(**vars_dict)
         lines = text.split("\n")
         filtered = []
         hide_map = {
@@ -2657,20 +2979,18 @@ class Userbot:
         me = await self.client.get_me()
         self.config.set("owner_id", me.id)
 
-        # ──── Определяем Premium-статус и переинициализируем CE ────
         _HAS_PREMIUM = getattr(me, "premium", False) or False
         _reinit_custom_emoji()
 
         if _HAS_PREMIUM:
-            log.info(f"⭐ Premium обнаружен — custom emoji включены")
+            log.info(f"⭐ {S('premium_detected', self)}")
         else:
-            log.info(f"ℹ️ Premium не обнаружен — обычные эмодзи")
+            log.info(f"ℹ️ {S('premium_not_detected', self)}")
 
-        # Устанавливаем дефолтные шаблоны если не заданы
         if not self.config.alive_message:
-            self.config.data["alive_message"] = get_default_alive_msg()
+            self.config.data["alive_message"] = get_default_alive_msg(self)
         if not self.config.data.get("kinfo", {}).get("template"):
-            self.config.data.setdefault("kinfo", {})["template"] = get_default_kinfo_template()
+            self.config.data.setdefault("kinfo", {})["template"] = get_default_kinfo_template(self)
             self.config.save()
 
         log.info(f"👤 {me.first_name} (ID: {me.id})")
@@ -2691,11 +3011,12 @@ class Userbot:
 
         um = len(self.module_manager.get_user_modules())
         tm = len(self.module_manager.modules)
+        lang = self.config.data.get("language", DEFAULT_LANGUAGE)
 
         log.info("━" * 45)
         log.info(f"{BRAND_EMOJI} {BRAND_NAME} v{BRAND_VERSION}")
-        log.info(f"📦 {tm} модулей (🔵{tm - um} 🟢{um}) | 🔧 {len(self._command_handlers)} команд")
-        log.info(f"🔑 {self.config.prefix}")
+        log.info(f"📦 {tm} {S('modules', self)} (🔵{tm - um} 🟢{um}) | 🔧 {len(self._command_handlers)} {S('commands', self)}")
+        log.info(f"🔑 {self.config.prefix} | 🌐 {LANG_NAMES.get(lang, lang)}")
         if self.inline_panel.active:
             ib = await self.inline_panel.inline_bot.get_me()
             log.info(f"🤖 @{ib.username}")
@@ -2714,30 +3035,39 @@ def initial_setup() -> Config:
     if config.api_id and config.api_hash and config.phone:
         return config
     print(BANNER)
-    print("  📋 Настройка\n  1️⃣  https://my.telegram.org\n")
+    print("  📋 Setup\n  1️⃣  https://my.telegram.org\n")
     while True:
         try:
             api_id = int(input(f"  {BRAND_EMOJI} API ID: ").strip())
             break
         except ValueError:
-            print("     ❌ Число!")
+            print("     ❌ Number!")
     api_hash = ""
     while not api_hash:
         api_hash = input(f"  {BRAND_EMOJI} API Hash: ").strip()
     phone = ""
     while not phone:
-        phone = input(f"  {BRAND_EMOJI} Телефон: ").strip()
+        phone = input(f"  {BRAND_EMOJI} Phone: ").strip()
     print(f"\n  2️⃣  @BotFather → Inline Mode ON\n")
     bot_token = input(f"  {BRAND_EMOJI} Bot Token (Enter=skip): ").strip()
-    prefix = input(f"\n  {BRAND_EMOJI} Префикс (Enter='.'): ").strip() or DEFAULT_PREFIX
+    prefix = input(f"\n  {BRAND_EMOJI} Prefix (Enter='.'): ").strip() or DEFAULT_PREFIX
+
+    print(f"\n  🌐 Language / Язык / Мова:")
+    for code, name in LANG_NAMES.items():
+        print(f"     {code} — {name}")
+    lang = input(f"  {BRAND_EMOJI} Language (Enter='ru'): ").strip().lower()
+    if lang not in SUPPORTED_LANGUAGES:
+        lang = DEFAULT_LANGUAGE
+
     config.api_id = api_id
     config.api_hash = api_hash
     config.phone = phone
     config.bot_token = bot_token
     config.prefix = prefix
+    config.data["language"] = lang
     config.alive_message = get_default_alive_msg()
     config.save()
-    print(f"\n  ✅ Сохранено: {CONFIG_FILE}\n")
+    print(f"\n  ✅ {S('setup_saved')}: {CONFIG_FILE}\n")
     return config
 
 
@@ -2745,12 +3075,12 @@ def main():
     print(BANNER)
     config = initial_setup()
     if not config.api_id or not config.api_hash:
-        print("  ❌ API ID и Hash!")
+        print(f"  ❌ API ID & Hash!")
         sys.exit(1)
     try:
         asyncio.run(Userbot(config).start())
     except KeyboardInterrupt:
-        print(f"\n  👋 {BRAND_NAME} остановлен.\n")
+        print(f"\n  👋 {BRAND_NAME} stopped.\n")
     except Exception as e:
         log.error(f"Fatal: {e}")
         traceback.print_exc()
