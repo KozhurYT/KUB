@@ -1,18 +1,15 @@
 #!/usr/bin/env python3
 """
 ╔══════════════════════════════════════════════════════════╗
-║           kazhurkeUserBot v2.6.0                        ║
+║           kazhurkeUserBot v2.5.0                        ║
 ║     Однофайловый Telegram Userbot с модулями            ║
 ║         и inline-панелью управления                     ║
-║     + Web-Setup Wizard (Настройка через браузер)         ║
+║     + автоустановка зависимостей модулей                 ║
 ║     + HTML разметка + custom emoji                      ║
-║     + Интерактивный CLI-shell (работает фоном)           ║
-║     + kpdb Пакетный Менеджер                            ║
-║     + kUB Module Studio (TUI Interface)                 ║
+║     + мультиязычность (ru/en/uk)                        ║
 ╚══════════════════════════════════════════════════════════╝
 
 Зависимости: pip install telethon cryptg aiohttp
-(Опционально для Studio на Windows: pip install windows-curses)
 """
 
 import os
@@ -28,22 +25,11 @@ import platform
 import io
 import re
 import subprocess
-import collections
-import threading
-import webbrowser
 from pathlib import Path
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from typing import Dict, List, Callable, Any, Optional, Tuple
 
-# Попытка импорта curses для TUI
-try:
-    import curses
-    HAS_CURSES = True
-except ImportError:
-    HAS_CURSES = False
-
-# Основные библиотеки Telethon
 from telethon import TelegramClient, events, Button, version as telethon_version
 from telethon.tl.types import (
     User, Channel, Chat,
@@ -56,26 +42,18 @@ from telethon.errors import (
     AccessTokenInvalidError,
     UserAdminInvalidError,
     ChatAdminRequiredError,
-    SessionPasswordNeededError,
-    PhoneNumberInvalidError,
-    PhoneCodeInvalidError,
-    PhoneCodeExpiredError
 )
 
-# AIOHTTP для веб-сервера установщика и загрузок
 try:
     import aiohttp
-    from aiohttp import web
     HAS_AIOHTTP = True
 except ImportError:
     HAS_AIOHTTP = False
-    print("CRITICAL: 'aiohttp' library is missing. Please run: pip install aiohttp")
-    sys.exit(1)
 
 # ──────────────────────── Брендинг ───────────────────────────
 
 BRAND_NAME = "kazhurkeUserBot"
-BRAND_VERSION = "2.6.0"
+BRAND_VERSION = "2.5.0"
 BRAND_EMOJI = "🦊"
 BRAND_SHORT = "KUB"
 
@@ -85,10 +63,9 @@ BANNER = f"""
 ║   {BRAND_EMOJI}  \033[1m{BRAND_NAME}\033[0m\033[38;5;208m v{BRAND_VERSION}                ║
 ║                                                  ║
 ║   Telegram Userbot с модулями и inline-панелью   ║
-║   + WEB SETUP (Настройка в браузере)             ║
-║   + Встроенный REPL-Shell (Interactive)          ║
-║   + kpdb (KUB Package DB / Manager)              ║
-║   + kUB Module Studio (Terminal UI)              ║
+║   + автоустановка зависимостей                   ║
+║   + HTML разметка + custom emoji                 ║
+║   + мультиязычность (ru/en/uk)                   ║
 ║                                                  ║
 ╚══════════════════════════════════════════════════╝\033[0m
 """
@@ -262,7 +239,7 @@ _STRINGS: Dict[str, Dict[str, str]] = {
     "pip_already_installed": {"ru": "уже установлен", "en": "already installed", "uk": "вже встановлено"},
     "pip_installing": {"ru": "Устанавливаю", "en": "Installing", "uk": "Встановлюю"},
     "pip_removing": {"ru": "Удаляю", "en": "Removing", "uk": "Видаляю"},
-    "pip_not_found": {"ru": "не найден или не установлен", "en": "not found or not installed", "uk": "не знайдено или не встановлено"},
+    "pip_not_found": {"ru": "не найден или не установлен", "en": "not found or not installed", "uk": "не знайдено або не встановлено"},
     "pip_packages": {"ru": "Пакеты", "en": "Packages", "uk": "Пакети"},
     "pip_no_deps": {"ru": "зависимостей нет", "en": "no dependencies", "uk": "залежностей немає"},
     "pip_unknown_sub": {"ru": "Неизвестная подкоманда", "en": "Unknown subcommand", "uk": "Невідома підкоманда"},
@@ -282,7 +259,7 @@ _STRINGS: Dict[str, Dict[str, str]] = {
     "fcfg_arbitrary": {"ru": "можете задать произвольный параметр", "en": "you can set arbitrary parameter", "uk": "можете задати довільний параметр"},
     "fcfg_specify_value": {"ru": "Укажите значение", "en": "Specify value", "uk": "Вкажіть значення"},
     "fcfg_type_mismatch": {"ru": "должен быть типа", "en": "must be of type", "uk": "має бути типу"},
-    "fcfg_bool_values": {"ru": "Допустимые значения", "en": "Allowed values", "uk": "Допустимі значения"},
+    "fcfg_bool_values": {"ru": "Допустимые значения", "en": "Allowed values", "uk": "Допустимі значення"},
     "fcfg_save_error": {"ru": "Ошибка сохранения", "en": "Save error", "uk": "Помилка збереження"},
     "fcfg_not_set": {"ru": "не установлен в custom_settings", "en": "not set in custom_settings", "uk": "не встановлено в custom_settings"},
     "fcfg_param_removed": {"ru": "Параметр удалён из настроек", "en": "Parameter removed from settings", "uk": "Параметр видалено з налаштувань"},
@@ -324,6 +301,7 @@ def _get_lang(bot_or_config=None) -> str:
         return bot_or_config.data.get("language", DEFAULT_LANGUAGE)
     return DEFAULT_LANGUAGE
 
+
 def S(key: str, bot_or_config=None) -> str:
     lang = _get_lang(bot_or_config)
     entry = _STRINGS.get(key)
@@ -331,14 +309,17 @@ def S(key: str, bot_or_config=None) -> str:
         return key
     return entry.get(lang) or entry.get("en") or entry.get("ru") or key
 
+
 # ──────────────────────── Custom Emoji ───────────────────────
 
 _HAS_PREMIUM = False
+
 
 def _make_ce(emoji_id: int, fallback: str) -> str:
     if _HAS_PREMIUM:
         return f'<tg-emoji emoji-id="{emoji_id}">{fallback}</tg-emoji>'
     return fallback
+
 
 class CEmoji:
     def __init__(self):
@@ -392,42 +373,55 @@ class CEmoji:
         self.GLOBE = _make_ce(5467928559664242360, "🌐")
         self.FILE = _make_ce(5386399931378440750, "📎")
 
+
 CE = CEmoji()
+
 
 def _reinit_custom_emoji():
     global CE
     CE._init_emojis()
 
+
 # ──────────────────────── HTML-утилиты ───────────────────────
+
 
 def html_escape(text: str) -> str:
     return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
+
 def html_bold(text: str) -> str:
     return f"<b>{text}</b>"
+
 
 def html_italic(text: str) -> str:
     return f"<i>{text}</i>"
 
+
 def html_code(text: str) -> str:
     return f"<code>{html_escape(text)}</code>"
+
 
 def html_pre(text: str, lang: str = "") -> str:
     if lang:
         return f'<pre><code class="language-{lang}">{html_escape(text)}</code></pre>'
     return f"<pre>{html_escape(text)}</pre>"
 
+
 def html_link(text: str, url: str) -> str:
     return f'<a href="{url}">{text}</a>'
+
 
 def html_user_link(name: str, user_id: int) -> str:
     return f'<a href="tg://user?id={user_id}">{html_escape(name)}</a>'
 
+
 def custom_emoji(emoji_id: int, fallback: str = "⭐") -> str:
     return _make_ce(emoji_id, fallback)
 
+
 def _strip_custom_emoji(text: str) -> str:
     return re.sub(r'<tg-emoji[^>]*>([^<]*)</tg-emoji>', r'\1', text)
+
 
 async def safe_edit(event, text: str, **kwargs):
     kwargs.setdefault("parse_mode", "html")
@@ -448,6 +442,7 @@ async def safe_edit(event, text: str, **kwargs):
         else:
             raise
 
+
 async def safe_send(client, chat_id, text: str, **kwargs):
     kwargs.setdefault("parse_mode", "html")
     try:
@@ -463,6 +458,7 @@ async def safe_send(client, chat_id, text: str, **kwargs):
                 return await client.send_message(chat_id, plain)
         else:
             raise
+
 
 async def safe_send_file(client, chat_id, file, caption: str = "", **kwargs):
     kwargs.setdefault("parse_mode", "html")
@@ -480,7 +476,9 @@ async def safe_send_file(client, chat_id, file, caption: str = "", **kwargs):
         else:
             raise
 
-# ──────────────────────── Логирование (Стандарт+TUI) ────────────────
+
+# ──────────────────────── Логирование ────────────────────────
+
 
 class ColorFormatter(logging.Formatter):
     COLORS = {
@@ -505,14 +503,6 @@ class ColorFormatter(logging.Formatter):
         ts = datetime.now().strftime("%H:%M:%S")
         return f"{color}[{ts}] {icon} {record.getMessage()}{self.RESET}"
 
-_ui_logs = collections.deque(maxlen=20)
-
-class StudioLogHandler(logging.Handler):
-    def emit(self, record):
-        raw_msg = self.format(record)
-        # Убираем все ANSI-коды (цвета)
-        clean = re.sub(r'\x1b\[[0-9;]*[mGK]', '', raw_msg)
-        _ui_logs.append(clean)
 
 _handler = logging.StreamHandler()
 _handler.setFormatter(ColorFormatter())
@@ -521,7 +511,7 @@ log.setLevel(logging.INFO)
 log.addHandler(_handler)
 log.propagate = False
 
-for _n in[
+for _n in [
     "telethon.network.connection.connection",
     "telethon.network.mtprotosender",
     "telethon.client.updates",
@@ -533,6 +523,8 @@ for _n in[
 CONFIG_FILE = "kub_config.json"
 MODULES_DIR = "modules"
 DEFAULT_PREFIX = "."
+
+
 def get_default_kinfo_template(bot=None):
     return (
         f"{CE.BRAND} <b>{{brand}}</b> v{{version}}\n"
@@ -548,6 +540,7 @@ def get_default_kinfo_template(bot=None):
         f"└ {CE.PC} {{os}}\n"
     )
 
+
 def get_default_alive_msg(bot=None):
     return (
         f"{CE.BRAND} <b>{{brand}}</b> {S('alive_working', bot)}\n"
@@ -556,7 +549,9 @@ def get_default_alive_msg(bot=None):
         f"└ {CE.WRENCH} {{commands}} {S('alive_commands', bot)}"
     )
 
+
 # ──────────────────────── Утилиты ────────────────────────────
+
 
 def format_uptime(seconds: float) -> str:
     td = timedelta(seconds=int(seconds))
@@ -569,17 +564,20 @@ def format_uptime(seconds: float) -> str:
     parts.append(f"{s}с")
     return " ".join(parts)
 
+
 def truncate(text: str, mx: int = 4096) -> str:
     return text if len(text) <= mx else text[: mx - 20] + "\n\n... (обрезано)"
+
 
 async def get_user_link(user) -> str:
     if not user:
         return "Unknown"
     name = f"{user.first_name or ''} {user.last_name or ''}".strip() or "Deleted"
     escaped = html_escape(name)
-    if getattr(user, "username", None):
+    if user.username:
         return html_link(escaped, f"https://t.me/{user.username}")
-    return html_user_link(name, getattr(user, "id", 0))
+    return html_user_link(name, user.id)
+
 
 def get_raw_github_url(url: str) -> str:
     url = url.strip()
@@ -588,6 +586,7 @@ def get_raw_github_url(url: str) -> str:
     if "gist.github.com" in url and "/raw" not in url:
         url = url.rstrip("/") + "/raw"
     return url
+
 
 # ──────────────── Управление зависимостями ───────────────────
 
@@ -598,8 +597,9 @@ PIP_TO_IMPORT = {
     "python-dotenv": "dotenv", "google-api-python-client": "googleapiclient",
     "python-magic": "magic", "attrs": "attr", "moviepy": "moviepy", "gtts": "gtts",
     "pydub": "pydub", "speedtest-cli": "speedtest", "wikipedia": "wikipedia",
-    "translate": "translate", "qrcode": "qrcode", "cryptg": "cryptg", "windows-curses": "curses",
+    "translate": "translate", "qrcode": "qrcode", "cryptg": "cryptg",
 }
+
 
 def parse_module_requirements(content: str) -> List[str]:
     requires: List[str] = []
@@ -626,10 +626,12 @@ def parse_module_requirements(content: str) -> List[str]:
                     seen.add(item.lower())
     return requires
 
+
 def _get_import_name(pip_name: str) -> str:
     base = re.split(r'[><=!~]', pip_name)[0].strip()
     mapped = PIP_TO_IMPORT.get(base.lower())
     return mapped if mapped else base.replace("-", "_")
+
 
 def is_package_installed(package: str) -> bool:
     base = re.split(r'[><=!~]', package)[0].strip()
@@ -652,9 +654,11 @@ def is_package_installed(package: str) -> bool:
         pass
     return False
 
+
 def install_pip_package(package: str, timeout: int = 120) -> Tuple[bool, str]:
     try:
-        result = subprocess.run([sys.executable, "-m", "pip", "install", package, "--quiet"],
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "install", package, "--quiet"],
             capture_output=True, text=True, timeout=timeout,
         )
         if result.returncode == 0:
@@ -670,9 +674,11 @@ def install_pip_package(package: str, timeout: int = 120) -> Tuple[bool, str]:
     except Exception as e:
         return False, f"{package}: {e}"
 
+
 def uninstall_pip_package(package: str) -> Tuple[bool, str]:
     try:
-        result = subprocess.run([sys.executable, "-m", "pip", "uninstall", package, "-y", "--quiet"],
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "uninstall", package, "-y", "--quiet"],
             capture_output=True, text=True, timeout=60,
         )
         if result.returncode == 0:
@@ -682,6 +688,7 @@ def uninstall_pip_package(package: str) -> Tuple[bool, str]:
             return False, f"{package}: {err[:200]}"
     except Exception as e:
         return False, f"{package}: {e}"
+
 
 def check_and_install_requirements(content: str) -> Dict[str, Any]:
     reqs = parse_module_requirements(content)
@@ -700,6 +707,7 @@ def check_and_install_requirements(content: str) -> Dict[str, Any]:
                 result["failed"].append(msg)
                 log.error(f"❌ Failed {pkg}: {msg}")
     return result
+
 
 async def async_install_pip_package(package: str, timeout: int = 120) -> Tuple[bool, str]:
     try:
@@ -723,6 +731,7 @@ async def async_install_pip_package(package: str, timeout: int = 120) -> Tuple[b
     except Exception as e:
         return False, f"{package}: {e}"
 
+
 async def async_check_and_install_requirements(content: str) -> Dict[str, Any]:
     reqs = parse_module_requirements(content)
     result = {"all": reqs, "already": [], "installed": [], "failed": []}
@@ -740,7 +749,9 @@ async def async_check_and_install_requirements(content: str) -> Dict[str, Any]:
                 log.error(f"❌ {msg}")
     return result
 
+
 # ──────────────────────── Конфиг ─────────────────────────────
+
 
 class Config:
     _defaults = {
@@ -818,7 +829,9 @@ class Config:
         self.data[key] = value
         self.save()
 
+
 # ──────────────────────── module_config ───────────────────────
+
 
 def module_config(bot, mod_name: str, key: str, default=None):
     custom = bot.config.data.get("custom_settings", {})
@@ -858,13 +871,16 @@ def module_config(bot, mod_name: str, key: str, default=None):
                 break
     return val
 
+
 def module_config_set(bot, mod_name: str, key: str, value):
     custom = dict(bot.config.data.get("custom_settings", {}))
     custom[f"{mod_name}.{key}"] = value
     bot.config.data["custom_settings"] = custom
     bot.config.save()
 
+
 # ──────────────────────── Модульная система ───────────────────
+
 
 @dataclass
 class Command:
@@ -874,6 +890,7 @@ class Command:
     module: str = ""
     usage: str = ""
     category: str = "misc"
+
 
 @dataclass
 class Module:
@@ -889,8 +906,9 @@ class Module:
     settings_schema: List[Dict] = field(default_factory=list)
     requirements: List[str] = field(default_factory=list)
 
+
 class ModuleManager:
-    def __init__(self, bot):
+    def __init__(self, bot: "Userbot"):
         self.bot = bot
         self.modules: Dict[str, Module] = {}
         self._builtin_names: set = set()
@@ -1101,10 +1119,13 @@ class ModuleManager:
             del inst[name]
             self.bot.config.set("installed_modules", inst)
         return True, f"{name} {S('removed', self.bot)}"
+
+
 # ──────────────────────── Inline-панель ──────────────────────
 
+
 class InlinePanel:
-    def __init__(self, bot):
+    def __init__(self, bot: "Userbot"):
         self.bot = bot
         self.inline_bot: Optional[TelegramClient] = None
         self._states: Dict[int, dict] = {}
@@ -1721,7 +1742,7 @@ class InlinePanel:
 # ──────────────────────── Встроенные модули ───────────────────
 
 
-def load_core_module(bot):
+def load_core_module(bot: "Userbot"):
     mod = Module(name="core", description=S("check", bot), author=BRAND_NAME, version=BRAND_VERSION)
     p = bot.config.prefix
 
@@ -2465,7 +2486,7 @@ def load_core_module(bot):
     bot.register_commands(mod)
 
 
-def load_tools_module(bot):
+def load_tools_module(bot: "Userbot"):
     mod = Module(name="tools", description=S("tools_word", bot), author=BRAND_NAME, version="1.0")
     p = bot.config.prefix
 
@@ -2476,8 +2497,8 @@ def load_tools_module(bot):
             u = await r.get_sender()
             t += f"{CE.USER} <code>{r.sender_id}</code>\n"
             if u:
-                t += f"📛 {html_escape(getattr(u, 'first_name', ''))}\n"
-                if getattr(u, 'username', None):
+                t += f"📛 {html_escape(u.first_name or '')}\n"
+                if u.username:
                     t += f"{CE.LINK} @{u.username}\n"
             t += f"{CE.CHAT} <code>{r.id}</code>\n"
         else:
@@ -2505,8 +2526,8 @@ def load_tools_module(bot):
             return
         t = (
             f"{CE.USER} <b>{S('info_word', bot)}</b>\n━━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"📛 {html_escape(getattr(u, 'first_name', ''))} {html_escape(getattr(u, 'last_name', ''))}\n{CE.ID} <code>{u.id}</code>\n"
-            f"📱 @{getattr(u, 'username', '—')}\n{CE.BOT} {S('yes', bot) if getattr(u, 'bot', False) else S('no', bot)}\n"
+            f"📛 {html_escape(u.first_name or '')} {html_escape(u.last_name or '')}\n{CE.ID} <code>{u.id}</code>\n"
+            f"📱 @{u.username or '—'}\n{CE.BOT} {S('yes', bot) if u.bot else S('no', bot)}\n"
             f"{CE.STAR} {S('yes', bot) if getattr(u, 'premium', False) else S('no', bot)}\n"
         )
         if fu.about:
@@ -2545,7 +2566,7 @@ def load_tools_module(bot):
         if isinstance(ch, User):
             await safe_edit(event, f"{CE.CROSS} {S('not_chat', bot)}")
             return
-        t = f"{CE.CHAT} <b>{html_escape(getattr(ch, 'title', ''))}</b>\n━━━━━━━━━━━━━━━━━━━━━\n{CE.ID} <code>{ch.id}</code>\n"
+        t = f"{CE.CHAT} <b>{html_escape(ch.title)}</b>\n━━━━━━━━━━━━━━━━━━━━━\n{CE.ID} <code>{ch.id}</code>\n"
         if hasattr(ch, "username") and ch.username:
             t += f"{CE.LINK} @{ch.username}\n"
         if isinstance(ch, Channel):
@@ -2600,7 +2621,7 @@ def load_tools_module(bot):
         async for m in bot.client.iter_messages(event.chat_id, search=q, limit=10):
             s = await m.get_sender()
             rs.append(
-                f"  <code>{m.id}</code> <b>{html_escape(getattr(s, 'first_name', '?') if s else '?')}</b>: "
+                f"  <code>{m.id}</code> <b>{html_escape(s.first_name if s else '?')}</b>: "
                 f"<i>{html_escape((m.text or '[media]')[:35])}</i>"
             )
         t = (
@@ -2624,7 +2645,7 @@ def load_tools_module(bot):
     bot.register_commands(mod)
 
 
-def load_fun_module(bot):
+def load_fun_module(bot: "Userbot"):
     mod = Module(name="fun", description=S("fun_word", bot), author=BRAND_NAME, version="1.0")
     p = bot.config.prefix
 
@@ -2750,7 +2771,7 @@ def load_fun_module(bot):
     bot.register_commands(mod)
 
 
-def load_admin_module(bot):
+def load_admin_module(bot: "Userbot"):
     mod = Module(name="admin", description=S("admin_word", bot), author=BRAND_NAME, version="1.0")
     p = bot.config.prefix
 
@@ -2762,7 +2783,7 @@ def load_admin_module(bot):
         try:
             await action_fn(r)
             u = await r.get_sender()
-            await safe_edit(event, f"{success_msg} <b>{html_escape(getattr(u, 'first_name', ''))}</b>!")
+            await safe_edit(event, f"{success_msg} <b>{html_escape(u.first_name)}</b>!")
         except (UserAdminInvalidError, ChatAdminRequiredError):
             await safe_edit(event, f"{CE.CROSS} {S('no_rights', bot)}")
         except Exception as e:
@@ -2817,7 +2838,7 @@ def load_admin_module(bot):
                 ChatBannedRights(until_date=until, send_messages=True, send_media=True,
                     send_stickers=True, send_gifs=True)))
             u = await r.get_sender()
-            await safe_edit(event, f"{CE.MUTE} <b>{html_escape(getattr(u, 'first_name', ''))}</b>!")
+            await safe_edit(event, f"{CE.MUTE} <b>{html_escape(u.first_name)}</b>!")
         except Exception as e:
             await safe_edit(event, f"{CE.CROSS} {html_escape(str(e))}")
 
@@ -2853,7 +2874,10 @@ def load_admin_module(bot):
     bot.module_manager.register_module(mod)
     bot.module_manager.mark_builtin("admin")
     bot.register_commands(mod)
+
+
 # ──────────────────────── Главный класс ──────────────────────
+
 
 class Userbot:
     def __init__(self, config: Config):
@@ -2876,14 +2900,9 @@ class Userbot:
             ping = f"{(time.time() - ping_start) * 1000:.1f}"
         else:
             s = time.time()
-            if self.client:
-                await self.client.get_me()
+            await self.client.get_me()
             ping = f"{(time.time() - s) * 1000:.1f}"
-
-        me = None
-        if self.client:
-            me = await self.client.get_me()
-
+        me = await self.client.get_me()
         um = len(self.module_manager.get_user_modules())
         tm = len(self.module_manager.modules)
         bi = tm - um
@@ -2892,14 +2911,9 @@ class Userbot:
         if custom_lines_list:
             for line in custom_lines_list:
                 custom_lines_text += f"├ {line}\n"
-
-        owner_link = "Unknown"
-        if me:
-            owner_link = await get_user_link(me)
-
         vars_dict = {
             "emoji": emoji, "brand": BRAND_NAME, "version": BRAND_VERSION,
-            "owner": owner_link, "ping": ping,
+            "owner": await get_user_link(me), "ping": ping,
             "uptime": format_uptime(time.time() - self.start_time),
             "modules": str(tm), "builtin": str(bi), "user_mods": str(um),
             "commands": str(len(self._command_handlers)),
@@ -2979,7 +2993,7 @@ class Userbot:
             self.config.data.setdefault("kinfo", {})["template"] = get_default_kinfo_template(self)
             self.config.save()
 
-        log.info(f"👤 {getattr(me, 'first_name', 'None')} (ID: {me.id})")
+        log.info(f"👤 {me.first_name} (ID: {me.id})")
 
         self.client.add_event_handler(self._handle_command, events.NewMessage(outgoing=True))
 
@@ -3013,557 +3027,64 @@ class Userbot:
         await self.client.run_until_disconnected()
 
 
-# ──────────────────────── WEB SETUP WIZARD ─────────────────────
+# ──────────────────────── Setup ──────────────────────────
 
-# Глобальные переменные для установщика
-_setup_client = None
-_setup_phone = None
-_setup_phone_hash = None
-_setup_api_id = None
-_setup_api_hash = None
 
-async def setup_handle_index(request):
-    html = f"""
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{BRAND_NAME} Setup</title>
-        <style>
-            body {{
-                background-color: #0f0f13;
-                color: #e0e0e0;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                margin: 0;
-            }}
-            .container {{
-                background-color: #1a1a20;
-                padding: 40px;
-                border-radius: 12px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-                width: 400px;
-                text-align: center;
-                border: 1px solid #333;
-            }}
-            h1 {{ margin-bottom: 5px; color: #ff9f43; }}
-            .step {{ display: none; }}
-            .step.active {{ display: block; }}
-            input {{
-                width: 100%;
-                padding: 12px;
-                margin: 10px 0;
-                background: #25252b;
-                border: 1px solid #444;
-                color: white;
-                border-radius: 6px;
-                box-sizing: border-box;
-            }}
-            button {{
-                width: 100%;
-                padding: 12px;
-                background: #ff9f43;
-                border: none;
-                color: #1a1a20;
-                font-weight: bold;
-                border-radius: 6px;
-                cursor: pointer;
-                transition: 0.2s;
-                margin-top: 10px;
-            }}
-            button:hover {{ background: #ffb063; }}
-            .error {{ color: #ff5252; margin: 10px 0; font-size: 0.9em; }}
-            .logo {{ font-size: 40px; margin-bottom: 10px; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="logo">{BRAND_EMOJI}</div>
-            <h1>{BRAND_NAME}</h1>
-            <p style="color: #888; font-size: 0.9em; margin-bottom: 20px;">Kernel Setup Wizard</p>
-
-            <!-- STEP 1: API ID/HASH -->
-            <div id="step1" class="step active">
-                <input type="text" id="api_id" placeholder="API ID (my.telegram.org)">
-                <input type="text" id="api_hash" placeholder="API Hash">
-                <input type="text" id="phone" placeholder="Phone (+1234567890)">
-                <div id="err1" class="error"></div>
-                <button onclick="sendCode()">Send Code →</button>
-            </div>
-
-            <!-- STEP 2: CODE -->
-            <div id="step2" class="step">
-                <p>Enter the code sent to Telegram</p>
-                <input type="text" id="code" placeholder="12345">
-                <div id="err2" class="error"></div>
-                <button onclick="verifyCode()">Verify Code →</button>
-            </div>
-
-            <!-- STEP 3: 2FA (Optional) -->
-            <div id="step3" class="step">
-                <p>Two-Step Verification (Password)</p>
-                <input type="password" id="password" placeholder="Password (if enabled)">
-                <div id="err3" class="error"></div>
-                <button onclick="verifyPassword()">Login →</button>
-            </div>
-
-            <!-- STEP 4: SUCCESS -->
-            <div id="step4" class="step">
-                <h2 style="color: #2ecc71">Success!</h2>
-                <p>Configuration saved.</p>
-                <p>You can close this tab now.</p>
-                <p>The bot is starting...</p>
-            </div>
-        </div>
-
-        <script>
-            async function sendCode() {{
-                const btn = document.querySelector('#step1 button');
-                btn.disabled = true; btn.innerText = "Sending...";
-                const data = {{
-                    api_id: document.getElementById('api_id').value,
-                    api_hash: document.getElementById('api_hash').value,
-                    phone: document.getElementById('phone').value
-                }};
-                const res = await fetch('/api/send_code', {{
-                    method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify(data)
-                }});
-                const json = await res.json();
-                if (json.ok) {{
-                    document.getElementById('step1').classList.remove('active');
-                    document.getElementById('step2').classList.add('active');
-                }} else {{
-                    document.getElementById('err1').innerText = json.error;
-                    btn.disabled = false; btn.innerText = "Send Code →";
-                }}
-            }}
-
-            async function verifyCode() {{
-                const btn = document.querySelector('#step2 button');
-                btn.disabled = true; btn.innerText = "Verifying...";
-                const data = {{ code: document.getElementById('code').value }};
-                const res = await fetch('/api/verify_code', {{
-                    method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify(data)
-                }});
-                const json = await res.json();
-                if (json.ok) {{
-                    finish();
-                }} else if (json.2fa) {{
-                    document.getElementById('step2').classList.remove('active');
-                    document.getElementById('step3').classList.add('active');
-                }} else {{
-                    document.getElementById('err2').innerText = json.error;
-                    btn.disabled = false; btn.innerText = "Verify Code →";
-                }}
-            }}
-
-            async function verifyPassword() {{
-                const btn = document.querySelector('#step3 button');
-                btn.disabled = true; btn.innerText = "Checking...";
-                const data = {{ password: document.getElementById('password').value }};
-                const res = await fetch('/api/verify_password', {{
-                    method: 'POST', headers: {{'Content-Type': 'application/json'}}, body: JSON.stringify(data)
-                }});
-                const json = await res.json();
-                if (json.ok) {{
-                    finish();
-                }} else {{
-                    document.getElementById('err3').innerText = json.error;
-                    btn.disabled = false; btn.innerText = "Login →";
-                }}
-            }}
-
-            function finish() {{
-                document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-                document.getElementById('step4').classList.add('active');
-                setTimeout(() => window.close(), 3000);
-            }}
-        </script>
-    </body>
-    </html>
-    """
-    return web.Response(text=html, content_type='text/html')
-
-async def setup_api_send_code(request):
-    global _setup_client, _setup_phone, _setup_phone_hash, _setup_api_id, _setup_api_hash
-    data = await request.json()
-    try:
-        api_id = int(data['api_id'])
-        api_hash = data['api_hash']
-        phone = data['phone']
-    except (ValueError, KeyError):
-        return web.json_response({'ok': False, 'error': 'Invalid Input'})
-
-    _setup_api_id = api_id
-    _setup_api_hash = api_hash
-    _setup_phone = phone
-
-    # Инициализация Telethon клиента
-    _setup_client = TelegramClient('kub_session', api_id, api_hash)
-    await _setup_client.connect()
-
-    try:
-        if not await _setup_client.is_user_authorized():
-            _setup_phone_hash = await _setup_client.send_code_request(phone)
-            return web.json_response({'ok': True})
-        else:
-            # Уже авторизован (сессия существовала)
-            return web.json_response({'ok': True}) # Считаем успехом, переходим дальше, но логика на JS перекинет на код
-            # Тут небольшой хак: если сессия есть, код не нужен. Но для простоты считаем что нужен ре-логин.
-    except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)})
-
-async def setup_api_verify_code(request):
-    global _setup_client
-    data = await request.json()
-    code = data['code']
-    try:
-        await _setup_client.sign_in(_setup_phone, code, phone_code_hash=_setup_phone_hash.phone_code_hash)
-        await _save_config_and_finish()
-        return web.json_response({'ok': True})
-    except SessionPasswordNeededError:
-        return web.json_response({'ok': False, '2fa': True})
-    except (PhoneCodeInvalidError, PhoneCodeExpiredError):
-        return web.json_response({'ok': False, 'error': 'Invalid Code'})
-    except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)})
-
-async def setup_api_verify_password(request):
-    global _setup_client
-    data = await request.json()
-    pwd = data['password']
-    try:
-        await _setup_client.sign_in(password=pwd)
-        await _save_config_and_finish()
-        return web.json_response({'ok': True})
-    except Exception as e:
-        return web.json_response({'ok': False, 'error': str(e)})
-
-async def _save_config_and_finish():
-    # Сохраняем конфиг
+def initial_setup() -> Config:
     config = Config()
-    config.api_id = _setup_api_id
-    config.api_hash = _setup_api_hash
-    config.phone = _setup_phone
+    if config.api_id and config.api_hash and config.phone:
+        return config
+    print(BANNER)
+    print("  📋 Setup\n  1️⃣  https://my.telegram.org\n")
+    while True:
+        try:
+            api_id = int(input(f"  {BRAND_EMOJI} API ID: ").strip())
+            break
+        except ValueError:
+            print("     ❌ Number!")
+    api_hash = ""
+    while not api_hash:
+        api_hash = input(f"  {BRAND_EMOJI} API Hash: ").strip()
+    phone = ""
+    while not phone:
+        phone = input(f"  {BRAND_EMOJI} Phone: ").strip()
+    print(f"\n  2️⃣  @BotFather → Inline Mode ON\n")
+    bot_token = input(f"  {BRAND_EMOJI} Bot Token (Enter=skip): ").strip()
+    prefix = input(f"\n  {BRAND_EMOJI} Prefix (Enter='.'): ").strip() or DEFAULT_PREFIX
+
+    print(f"\n  🌐 Language / Язык / Мова:")
+    for code, name in LANG_NAMES.items():
+        print(f"     {code} — {name}")
+    lang = input(f"  {BRAND_EMOJI} Language (Enter='ru'): ").strip().lower()
+    if lang not in SUPPORTED_LANGUAGES:
+        lang = DEFAULT_LANGUAGE
+
+    config.api_id = api_id
+    config.api_hash = api_hash
+    config.phone = phone
+    config.bot_token = bot_token
+    config.prefix = prefix
+    config.data["language"] = lang
     config.alive_message = get_default_alive_msg()
     config.save()
-    # Отключаем клиент установщика
-    await _setup_client.disconnect()
-    # Сигнализируем главному потоку (через остановку веб-сервера)
-    raise web.GracefulExit()
+    print(f"\n  ✅ {S('setup_saved')}: {CONFIG_FILE}\n")
+    return config
 
-def run_web_setup():
-    app = web.Application()
-    app.add_routes([
-        web.get('/', setup_handle_index),
-        web.post('/api/send_code', setup_api_send_code),
-        web.post('/api/verify_code', setup_api_verify_code),
-        web.post('/api/verify_password', setup_api_verify_password),
-    ])
-
-    runner = web.AppRunner(app)
-
-    # Запуск в синхронном стиле через asyncio.run нельзя, т.к. мы внутри другого процесса
-    # Будем использовать простой loop
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    loop.run_until_complete(runner.setup())
-    site = web.TCPSite(runner, 'localhost', 8080)
-
-    print(f"\033[32m[!] Web Setup Started: http://localhost:8080\033[0m")
-    try:
-        webbrowser.open("http://localhost:8080")
-    except:
-        pass
-
-    try:
-        loop.run_until_complete(site.start())
-        loop.run_forever()
-    except (KeyboardInterrupt, web.GracefulExit):
-        pass
-    finally:
-        loop.run_until_complete(runner.cleanup())
-
-# ──────────────────────── Инструменты CLI (kpdb, studio) ──────────────────
-
-def run_kpdb(args: List[str]):
-    print(f"\033[38;5;45m\033[1m")
-    print("█▄▀ █▀█ █▀▄ █▄▄")
-    print("█ █ █▀▀ █▄▀ █▄█")
-    print(f"\nMCUB/kUB Package Manager v1.0.0\033[0m\n")
-
-    if not args or args[0] in ("-h", "--help", "help"):
-        print("\033[1mUsage:\033[0m\n  kpdb <operation> [package] [options]\n")
-        print("\033[1mOperations:\033[0m")
-        print("  \033[32minstall\033[0m   <pkg>     Install a pip package/module")
-        print("  \033[32mupdate\033[0m    <pkg>     Update an installed package")
-        print("  \033[32muninstall\033[0m <pkg>     Uninstall a package")
-        print("  \033[32mlist\033[0m      [--user]  List installed python packages")
-        print("  \033[32msearch\033[0m    <query>   Search via PyPi / repo")
-        return
-
-    op = args[0]
-    pkgs = args[1:]
-
-    if op == "install":
-        for pkg in pkgs:
-            print(f"\033[33m[*] Installing {pkg}...\033[0m")
-            ok, msg = install_pip_package(pkg)
-            if ok:
-                print(f"\033[32m[✓] OK: '{pkg}' loaded and installed successfully.\033[0m")
-            else:
-                print(f"\033[31m[x] Error: {msg}\033[0m")
-
-    elif op == "uninstall":
-        for pkg in pkgs:
-            print(f"\033[33m[*] Uninstalling {pkg}...\033[0m")
-            ok, msg = uninstall_pip_package(pkg)
-            if ok:
-                print(f"\033[32m[✓] OK: '{pkg}' removed.\033[0m")
-            else:
-                print(f"\033[31m[x] Error: {msg}\033[0m")
-
-    elif op == "list":
-        try:
-            res = subprocess.run([sys.executable, "-m", "pip", "list", "--format=columns"], text=True, capture_output=True)
-            print(res.stdout)
-            print("\033[32m[✓] done\033[0m")
-        except Exception as e:
-            print(f"Error: {e}")
-
-    elif op == "update":
-        if pkgs:
-            for p in pkgs:
-                subprocess.run([sys.executable, "-m", "pip", "install", "--upgrade", p])
-        else:
-            print("Specify package to update.")
-    else:
-        print(f"\033[31mUnknown operation: {op}\033[0m")
-
-
-def studio_main(stdscr):
-    # Studio UI configuration & colors
-    curses.curs_set(0)
-    stdscr.nodelay(1)
-    stdscr.timeout(100)
-
-    curses.start_color()
-    curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)   # borders / normal text
-    curses.init_pair(2, curses.COLOR_GREEN, curses.COLOR_BLACK)  # loaded mod
-    curses.init_pair(3, curses.COLOR_MAGENTA, curses.COLOR_BLACK) # branding
-    curses.init_pair(4, curses.COLOR_RED, curses.COLOR_BLACK)     # error logs
-    curses.init_pair(5, curses.COLOR_WHITE, curses.COLOR_BLUE)    # top header / selection
-
-    config = Config()
-    log.info("kUB Studio TUI Initialized.")
-
-    mods_installed = list(config.get("installed_modules", {}).keys())
-
-    def draw_ui(h, w, sel_idx):
-        stdscr.erase()
-        # Draw header
-        try:
-            stdscr.attron(curses.color_pair(5) | curses.A_BOLD)
-            stdscr.addstr(0, 0, f" kUB Studio v{BRAND_VERSION}".ljust(w))
-            stdscr.addstr(0, w - 15, "? help   q quit")
-            stdscr.attroff(curses.color_pair(5) | curses.A_BOLD)
-
-            # Draw Left Panel (Module list)
-            left_width = min(30, w // 4)
-            for y in range(1, h - 8):
-                stdscr.addch(y, left_width, curses.ACS_VLINE, curses.color_pair(1))
-
-            stdscr.attron(curses.color_pair(3) | curses.A_BOLD)
-            stdscr.addstr(2, 2, "SYSTEM")
-            stdscr.attroff(curses.color_pair(3) | curses.A_BOLD)
-            stdscr.addstr(3, 2, "core (builtin)", curses.color_pair(2))
-            stdscr.addstr(4, 2, "tools (builtin)", curses.color_pair(2))
-
-            # Listing user modules
-            if not mods_installed:
-                stdscr.addstr(6, 2, "No mods", curses.color_pair(1))
-            for i, mod_name in enumerate(mods_installed):
-                display_str = f"{mod_name}"[:left_width-4]
-                attrs = curses.color_pair(2)
-                if i == sel_idx:
-                    attrs = curses.color_pair(5)
-                    display_str = f"▶ {display_str}"
-                else:
-                    display_str = f"  {display_str}"
-                try:
-                    stdscr.addstr(6 + i, 1, display_str, attrs)
-                except curses.error:
-                    pass
-
-            # Logo in main
-            main_pad = left_width + 5
-            logo_y = max(2, (h // 2) - 8)
-            stdscr.attron(curses.color_pair(1) | curses.A_BOLD)
-            stdscr.addstr(logo_y, main_pad,   r"   __ __ _________  ____")
-            stdscr.addstr(logo_y+1, main_pad, r"  / //_// ____/ / / / __ )")
-            stdscr.addstr(logo_y+2, main_pad, r" / ,<  / / / / / / / __  |")
-            stdscr.addstr(logo_y+3, main_pad, r"/ /| |/ /___/ /_/ / /_/ / ")
-            stdscr.addstr(logo_y+4, main_pad, r"\_/ |_|\____/\____/_____/ ")
-            stdscr.attroff(curses.color_pair(1) | curses.A_BOLD)
-            stdscr.addstr(logo_y+5, main_pad+7, "S T U D I O", curses.color_pair(3) | curses.A_BOLD)
-
-            # Draw Bottom Box (Logs)
-            log_h = 7
-            for x in range(0, w):
-                stdscr.addch(h - log_h - 1, x, curses.ACS_HLINE, curses.color_pair(1))
-            stdscr.addstr(h - log_h - 1, w//2 - 2, " Log ", curses.color_pair(1) | curses.A_BOLD)
-
-            log_offset = h - log_h
-            for i, log_str in enumerate(list(_ui_logs)[-log_h:]):
-                clean_str = str(log_str)[:w-2]
-                color = curses.color_pair(1)
-                if "OK" in clean_str or "installed" in clean_str:
-                    color = curses.color_pair(2)
-                elif "Err" in clean_str or "Fail" in clean_str:
-                    color = curses.color_pair(4)
-                stdscr.addstr(log_offset + i, 1, clean_str, color)
-        except curses.error:
-            pass
-
-        stdscr.refresh()
-
-    sel_index = 0
-    while True:
-        h, w = stdscr.getmaxyx()
-
-        c = stdscr.getch()
-        if c == ord('q'):
-            break
-        elif c == curses.KEY_UP:
-            sel_index = max(0, sel_index - 1)
-        elif c == curses.KEY_DOWN:
-            if mods_installed:
-                sel_index = min(len(mods_installed) - 1, sel_index + 1)
-
-        draw_ui(h, w, sel_index)
-
-def run_studio():
-    if not HAS_CURSES:
-        print("\033[31m[x] `curses` library not found.\033[0m")
-        if platform.system() == "Windows":
-            print("To fix this, install windows-curses:\n\033[32mpip install windows-curses\033[0m")
-        return
-    curses.wrapper(studio_main)
-
-# ──────────────────────── Interactive Shell (Custom REPL) ──────────────────
-
-class CustomShell(io.IOBase):
-    """Кастомный класс для обработки ввода в Interactive Mode"""
-    def __init__(self, bot_instance):
-        self.bot = bot_instance
-
-    def start(self):
-        # Очистка экрана
-        print("\033[2J\033[H", end='')
-        print(BANNER)
-        print(f"\033[36m[*] Starting kUB Interactive Shell... (Bot is running in background)\033[0m")
-        print(f"\033[90m    Type 'kpdb help' for package manager\033[0m")
-        print(f"\033[90m    Type 'studio' for module studio UI\033[0m")
-        print(f"\033[90m    Type 'exit' to stop bot and shell\033[0m\n")
-
-        while True:
-            try:
-                # Prompt
-                user_input = input(f"\033[32mkUB\033[0m@\033[34mshell\033[0m:~\033[33m$ \033[0m").strip()
-
-                if not user_input:
-                    continue
-
-                parts = user_input.split()
-                cmd = parts[0].lower()
-
-                if cmd in ('exit', 'quit', 'q'):
-                    print("\033[31m[!] Stopping bot...\033[0m")
-                    os._exit(0)
-
-                elif cmd == 'clear':
-                    print("\033[2J\033[H", end='')
-                    print(BANNER)
-
-                elif cmd == 'kpdb':
-                    run_kpdb(parts[1:])
-
-                elif cmd == 'studio':
-                    print("\033[36m[*] Launching Studio UI...\033[0m")
-                    time.sleep(0.5)
-                    run_studio()
-                    # Возврат в шелл после выхода из TUI
-                    print("\033[2J\033[H", end='')
-                    print(BANNER)
-                    print("\033[32m[✓] Returned to shell.\033[0m")
-
-                elif cmd in ('ls', 'dir'):
-                    subprocess.run(cmd if platform.system()!="Windows" else "dir", shell=True)
-
-                elif cmd.startswith("!"):
-                    # Выполнение системной команды
-                    subprocess.run(user_input[1:], shell=True)
-
-                elif cmd == 'help':
-                    print("\n\033[1mBuilt-in commands:\033[0m")
-                    print("  kpdb ...   Package manager")
-                    print("  studio     Open TUI Module Studio")
-                    print("  clear      Clear screen")
-                    print("  exit       Stop everything")
-                    print("  !cmd       Run system command (e.g. !ls)")
-                    print("  <python>   Execute python code (e.g. print(1+1))\n")
-
-                else:
-                    # Пытаемся выполнить как Python код
-                    try:
-                        exec(user_input, globals(), locals())
-                    except Exception as e:
-                        print(f"\033[31mError: {e}\033[0m")
-
-            except (KeyboardInterrupt, EOFError):
-                print("\n")
-                continue
-
-# ──────────────────────── Main Entry Point ─────────────────────
-
-def bot_thread(config):
-    """Запускает бота в отдельном потоке с новым event loop'ом"""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    bot = Userbot(config)
-    try:
-        loop.run_until_complete(bot.start())
-    except Exception as e:
-        log.error(f"Bot Loop Error: {e}")
 
 def main():
     print(BANNER)
+    config = initial_setup()
+    if not config.api_id or not config.api_hash:
+        print(f"  ❌ API ID & Hash!")
+        sys.exit(1)
+    try:
+        asyncio.run(Userbot(config).start())
+    except KeyboardInterrupt:
+        print(f"\n  👋 {BRAND_NAME} stopped.\n")
+    except Exception as e:
+        log.error(f"Fatal: {e}")
+        traceback.print_exc()
 
-    # 1. Проверяем наличие конфига
-    config = Config()
-    if not config.api_id or not config.api_hash or not config.phone:
-        print(f"\033[31m[!] Configuration missing. Starting Web Setup Wizard...\033[0m")
-        # Запускаем сервер настройки (блокирует выполнение пока не настроят)
-        run_web_setup()
-
-        # После успешной настройки сервер падает (GracefulExit), и мы перезагружаем конфиг
-        print(f"\n\033[32m[✓] Setup complete! Starting bot...\033[0m")
-        config = Config() # reload
-
-    # 2. Запускаем бота в отдельном потоке (Daemon)
-    t = threading.Thread(target=bot_thread, args=(config,), daemon=True)
-    t.start()
-
-    # 3. Запускаем Интерактивный Шелл в главном потоке
-    # (Shell будет блокировать выполнение, пока пользователь не выйдет)
-    time.sleep(1) # Даем боту секунду на инициализацию логов
-    shell = CustomShell(None)
-    shell.start()
 
 if __name__ == "__main__":
     main()
